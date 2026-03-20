@@ -34,9 +34,10 @@ export const loginWithGoogle = createAsyncThunk(
   'api/auth/google',
   async ({ idToken }, { dispatch, rejectWithValue }) => {
     try {
-      const response = await api.auth.loginWithGoogle({ idToken });
-      if (response?.accessToken) await secureStorage.setItem('accessToken', response.accessToken);
-      if (response?.refreshToken) await secureStorage.setItem('refreshToken', response.refreshToken);
+      const response = await api.auth.loginWithGoogle({ idToken, IdToken: idToken });
+      const tokens = response?.data || response;
+      if (tokens?.accessToken) await secureStorage.setItem('accessToken', tokens.accessToken);
+      if (tokens?.refreshToken) await secureStorage.setItem('refreshToken', tokens.refreshToken);
       await secureStorage.setItem('isLoggedIn', 'true');
 
       const resultAction = await dispatch(checkAuth({ force: true }));
@@ -55,10 +56,17 @@ export const checkAuth = createAsyncThunk(
     try {
       if (!force) {
         const cachedUser = await secureStorage.getItem('cachedUser');
-        if (cachedUser) return cachedUser;
+        if (cachedUser) {
+          try {
+            return JSON.parse(cachedUser);
+          } catch (e) {
+            console.warn('[AuthSlice] Failed to parse cached user:', e);
+          }
+        }
       }
 
       const response = await api.auth.getCurrentUser();
+      console.log('[AuthSlice] checkAuth Response:', response);
       if (response) {
         await secureStorage.setItem('cachedUser', JSON.stringify(response));
       }
@@ -72,12 +80,13 @@ export const checkAuth = createAsyncThunk(
 export const logoutUser = createAsyncThunk(
   'api/auth/logoutTask',
   async (_, { dispatch }) => {
+    // Optimistically clear local state immediately so UI updates instantly
+    dispatch(logout());
     try {
+      // Fire and forget the server logout notification
       await api.auth.logout();
     } catch (error) {
       console.error('[AuthSlice] Logout task error:', error);
-    } finally {
-      dispatch(logout());
     }
   }
 );
@@ -141,36 +150,58 @@ const authSlice = createSlice({
       .addCase(loginUser.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        const userData = action.payload?.responce || action.payload?.response || action.payload?.user || action.payload;
+        // Handle different payload structures matching checkAuth logic
+        const userData = action.payload?.data || action.payload?.responce || action.payload?.response || action.payload?.user || action.payload;
+
         if (userData && typeof userData === 'object' && Object.keys(userData).length > 0) {
           state.isAuthenticated = true;
           state.user = userData;
         } else {
+          console.warn('[AuthSlice] loginUser fulfilled but no valid user data found.');
           state.isAuthenticated = false;
           state.user = null;
         }
       })
-      .addCase(loginUser.rejected, (state, action) => { state.loading = false; state.error = action.payload; state.isAuthenticated = false; })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.isAuthenticated = false;
+      })
 
-      .addCase(loginWithGoogle.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(loginWithGoogle.fulfilled, (state, action) => {
         state.loading = false;
-        const userData = action.payload?.responce || action.payload?.response || action.payload?.user || action.payload;
+        // Synchronized with web project's robust parsing
+        const userData = action.payload?.data || action.payload?.responce || action.payload?.response || action.payload?.user || action.payload;
+
         if (userData && typeof userData === 'object' && Object.keys(userData).length > 0) {
           state.isAuthenticated = true;
           state.user = userData;
         }
       })
-      .addCase(loginWithGoogle.rejected, (state, action) => { state.loading = false; state.error = action.payload; state.isAuthenticated = false; })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.isAuthenticated = false;
+      })
 
-      .addCase(checkAuth.pending, (state) => { state.loading = true; })
+      .addCase(checkAuth.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(checkAuth.fulfilled, (state, action) => {
         state.loading = false;
-        const userData = action.payload?.responce || action.payload?.response || action.payload?.user || action.payload;
+        // Handle various backend response formats (including typo 'responce')
+        const userData = action.payload?.data || action.payload?.responce || action.payload?.response || action.payload?.user || action.payload;
+
+        // IMPORTANT: Only mark as authenticated if we actually have user data
         if (userData && typeof userData === 'object' && Object.keys(userData).length > 0) {
           state.isAuthenticated = true;
           state.user = userData;
         } else {
+          console.warn('[AuthSlice] checkAuth fulfilled but no valid user data found. Treating as unauthenticated.');
           state.isAuthenticated = false;
           state.user = null;
         }

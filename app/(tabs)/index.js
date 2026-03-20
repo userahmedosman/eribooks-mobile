@@ -14,10 +14,20 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
+import { 
+  Search, 
+  TrendingUp, 
+  Sparkles, 
+  BookOpen, 
+  ShoppingBag,
+  AlertCircle,
+  RefreshCcw
+} from 'lucide-react-native';
 import { setProduct } from '../../src/lib/features/product/productSlice';
 import { checkAuth } from '../../src/lib/features/auth/authSlice';
 import { api } from '../../src/lib/api';
-import { colors, spacing, borderRadius, typography, shadows } from '../../src/theme';
+import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
+import { t } from '../../src/i18n';
 
 const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || '';
 const { width } = Dimensions.get('window');
@@ -25,8 +35,11 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
   const products = useSelector((state) => state.product.list);
+
+  const colors = getColors(theme);
+  const isDark = theme === 'dark';
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,7 +76,7 @@ export default function HomeScreen() {
     return `${API_URL}${url}`;
   };
 
-  const renderProduct = ({ item, index }) => {
+  const renderProduct = ({ item }) => {
     const imageUrl = getImageUrl(item);
     const title = item?.book?.title || item?.title || 'Untitled';
     const authors = item?.book?.authors?.map((a) => a.name).join(', ') || item?.author || '';
@@ -71,26 +84,31 @@ export default function HomeScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.productCard}
+        style={[styles.productCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => router.push(`/book/${item.id}`)}
         activeOpacity={0.8}
       >
-        <View style={styles.imageContainer}>
+        <View style={[styles.imageContainer, { backgroundColor: colors.surfaceLight }]}>
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} style={styles.coverImage} resizeMode="cover" />
           ) : (
             <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderEmoji}>📖</Text>
+              <BookOpen size={48} color={colors.textMuted} />
+            </View>
+          )}
+          {item.price === 0 && (
+            <View style={[styles.freeBadge, { backgroundColor: colors.success }]}>
+              <Text style={styles.freeBadgeText}>{t('product.free', language)}</Text>
             </View>
           )}
         </View>
         <View style={styles.productInfo}>
-          <Text style={styles.productTitle} numberOfLines={1}>{title}</Text>
-          {authors ? <Text style={styles.productAuthor} numberOfLines={1}>{authors}</Text> : null}
+          <Text style={[styles.productTitle, { color: colors.text }]} numberOfLines={1}>{title}</Text>
+          <Text style={[styles.productAuthor, { color: colors.textSecondary }]} numberOfLines={1}>{authors || 'EriBooks Author'}</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.productPrice}>{price}</Text>
-            <View style={styles.buyButtonSmall}>
-              <Text style={styles.buyButtonSmallText}>Buy</Text>
+            <Text style={[styles.productPrice, { color: colors.primary }]}>{price}</Text>
+            <View style={[styles.buyButtonSmall, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}>
+              <ShoppingBag size={14} color={colors.primary} />
             </View>
           </View>
         </View>
@@ -99,68 +117,37 @@ export default function HomeScreen() {
   };
 
   const renderHeader = () => {
-    const featuredProducts = products.length > 0 ? products.slice(0, 2) : [];
-
     return (
       <View style={styles.header}>
         <View style={styles.greetingHeader}>
           <View>
-            <Text style={styles.subtitle}>
-              {isAuthenticated ? 'Welcome back,' : 'Good morning,'}
-            </Text>
-            <Text style={styles.greeting}>
-              {isAuthenticated ? `${user?.firstName || 'Reader'}` : 'Guest'}
-            </Text>
+            <Text style={[styles.greeting, { color: colors.text }]}>{t('home.title', language)}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('home.subtitle', language)}</Text>
           </View>
-          <TouchableOpacity style={styles.searchIconBtn} onPress={() => router.push('/search')}>
-            <Text style={{ fontSize: 24 }}>🔍</Text>
+          <TouchableOpacity 
+            style={[styles.searchIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+            onPress={() => router.push('/search')}
+          >
+            <Search size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        {featuredProducts.length > 0 && (
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={styles.sectionHeader}>Featured</Text>
-            <View style={styles.featuredContainer}>
-              {featuredProducts.map((featuredProduct) => (
-                <TouchableOpacity
-                  key={featuredProduct.id}
-                  style={styles.featuredCard}
-                  onPress={() => router.push(`/book/${featuredProduct.id}`)}
-                  activeOpacity={0.9}
-                >
-                  <ImageBackground
-                    source={{ uri: getImageUrl(featuredProduct) || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=1000&auto=format&fit=crop' }}
-                    style={styles.featuredBackground}
-                    imageStyle={{ borderRadius: borderRadius.xl }}
-                  >
-                    <View style={styles.featuredOverlay}>
-                      <View style={styles.featuredBadge}>
-                        <Text style={styles.featuredBadgeText}>Featured</Text>
-                      </View>
-                      <View>
-                        <Text style={styles.featuredTitle} numberOfLines={2}>{featuredProduct?.book?.title || featuredProduct?.title || 'Untitled'}</Text>
-                        <Text style={styles.featuredAuthor} numberOfLines={1}>{featuredProduct?.book?.authors?.map((a) => a.name).join(', ') || featuredProduct?.author || ''}</Text>
-                      </View>
-                    </View>
-                  </ImageBackground>
-                </TouchableOpacity>
-              ))}
-            </View>
+        {products.length > 0 && (
+          <View style={styles.sectionTitleRow}>
+            <TrendingUp size={20} color={colors.primary} style={{ marginRight: 8 }} />
+            <Text style={[styles.sectionHeader, { color: colors.text }]}>{t('home.trending', language)}</Text>
           </View>
         )}
-
-        {products.length > 2 && <Text style={styles.sectionHeader}>Trending Now</Text>}
       </View>
     );
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        {renderHeader()}
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Curating your library...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('common.loading', language)}</Text>
         </View>
       </SafeAreaView>
     );
@@ -168,13 +155,13 @@ export default function HomeScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        {renderHeader()}
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centered}>
-          <Text style={styles.errorEmoji}>😵</Text>
-          <Text style={styles.errorText}>We couldn't load the books.</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchProducts}>
-            <Text style={styles.retryText}>Try Again</Text>
+          <AlertCircle size={64} color={colors.error} />
+          <Text style={[styles.errorText, { color: colors.error }]}>{t('common.error', language)}</Text>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={fetchProducts}>
+            <RefreshCcw size={20} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.retryText, { color: '#FFF' }]}>{t('common.retry', language)}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -182,9 +169,9 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
-        data={products.length > 2 ? products.slice(2) : []}
+        data={products}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderProduct}
         numColumns={2}
@@ -193,8 +180,9 @@ export default function HomeScreen() {
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <View style={styles.centered}>
-            <Text style={styles.emptyEmoji}>📭</Text>
-            <Text style={styles.emptyText}>No books available right now.</Text>
+            <BookOpen size={64} color={colors.textMuted} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('home.empty', language)}</Text>
+            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>{t('home.emptySubtitle', language)}</Text>
           </View>
         }
         refreshControl={
@@ -214,7 +202,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: spacing.lg,
@@ -228,30 +215,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: 4,
+    ...typography.bodySmall,
+    marginTop: 2,
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.5,
+    ...typography.h1,
   },
   searchIconBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   sectionHeader: {
     ...typography.h2,
-    color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: 0,
   },
   listContent: {
     paddingBottom: spacing.xxl,
@@ -260,96 +245,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     justifyContent: 'space-between',
   },
-  featuredContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  featuredCard: {
-    width: '48%',
-    height: 320,
-    marginBottom: spacing.lg,
-    borderRadius: borderRadius.xl,
-    ...shadows.lg,
-  },
-  featuredBackground: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  featuredOverlay: {
-    padding: spacing.md,
-    backgroundColor: 'rgba(15, 15, 26, 0.7)',
-    borderBottomLeftRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.xl,
-  },
-  featuredBadge: {
-    position: 'absolute',
-    top: -180,
-    left: spacing.md,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-  },
-  featuredBadgeText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  featuredTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: 4,
-    fontSize: 14,
-  },
-  featuredAuthor: {
-    ...typography.caption,
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
   productCard: {
     width: '48%',
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    ...shadows.md,
+    ...shadows.sm,
   },
   imageContainer: {
     width: '100%',
-    height: 280,
-    backgroundColor: colors.surfaceLight,
+    height: 220,
   },
   coverImage: {
     width: '100%',
     height: '100%',
   },
   placeholderImage: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceLight,
   },
-  placeholderEmoji: {
-    fontSize: 48,
+  freeBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  freeBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   productInfo: {
     padding: spacing.md,
   },
   productTitle: {
     ...typography.label,
-    color: colors.text,
-    fontSize: 15,
-    marginBottom: 4,
+    fontSize: 14,
+    marginBottom: 2,
+    textTransform: 'none',
   },
   productAuthor: {
     ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 12,
     marginBottom: spacing.md,
   },
   priceRow: {
@@ -359,21 +301,16 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     ...typography.body,
-    color: colors.primaryLight,
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 16,
   },
   buyButtonSmall: {
-    backgroundColor: 'rgba(108, 99, 255, 0.15)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.3)',
-  },
-  buyButtonSmallText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.primaryLight,
   },
   centered: {
     flex: 1,
@@ -383,30 +320,28 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     ...typography.body,
-    color: colors.textSecondary,
     marginTop: spacing.md,
   },
-  errorEmoji: { fontSize: 48, marginBottom: spacing.md },
   errorText: {
-    ...typography.body,
-    color: colors.error,
+    ...typography.h3,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
   },
   retryButton: {
-    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.full,
-    ...shadows.sm,
+    ...shadows.md,
   },
   retryText: {
     ...typography.button,
-    color: colors.text,
   },
-  emptyEmoji: { fontSize: 64, marginBottom: spacing.md },
   emptyText: {
     ...typography.body,
-    color: colors.textSecondary,
+    marginTop: spacing.md,
+    textAlign: 'center',
   },
 });

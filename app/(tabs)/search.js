@@ -9,16 +9,23 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Keyboard,
+  SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
+import { Search as SearchIcon, X, Book, BookOpen } from 'lucide-react-native';
+import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
 import { api } from '../../src/lib/api';
-import { colors, spacing, borderRadius, typography, shadows } from '../../src/theme';
+import { t } from '../../src/i18n';
 
 const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || '';
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
+  const colors = getColors(theme);
+  const isDark = theme === 'dark';
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -55,37 +62,37 @@ export default function SearchScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.resultCard}
+        style={[styles.resultCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => router.push(`/book/${item.id}`)}
         activeOpacity={0.8}
       >
-        <View style={styles.resultImage}>
+        <View style={[styles.resultImage, { backgroundColor: colors.surfaceLight }]}>
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} style={styles.coverImage} resizeMode="cover" />
           ) : (
             <View style={styles.placeholderImage}>
-              <Text style={{ fontSize: 32 }}>📖</Text>
+              <Book size={32} color={colors.textMuted} />
             </View>
           )}
         </View>
         <View style={styles.resultInfo}>
-          <Text style={styles.resultTitle} numberOfLines={2}>{title}</Text>
-          {authors ? <Text style={styles.resultAuthor} numberOfLines={1}>{authors}</Text> : null}
-          <Text style={styles.resultPrice}>{price}</Text>
+          <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={2}>{title}</Text>
+          <Text style={[styles.resultAuthor, { color: colors.textSecondary }]} numberOfLines={1}>{authors || 'EriBooks Author'}</Text>
+          <Text style={[styles.resultPrice, { color: colors.primary }]}>{price}</Text>
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.screenTitle}>Search Books</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.screenTitle, { color: colors.text }]}>{t('search.title', language)}</Text>
 
-      <View style={styles.searchBar}>
-        <Text style={styles.searchIcon}>🔍</Text>
+      <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <SearchIcon size={20} color={colors.textSecondary} style={{ marginRight: spacing.sm }} />
         <TextInput
-          style={styles.searchInput}
-          placeholder="Search by title, author..."
+          style={[styles.searchInput, { color: colors.text }]}
+          placeholder={t('search.placeholder', language)}
           placeholderTextColor={colors.textMuted}
           value={query}
           onChangeText={setQuery}
@@ -94,7 +101,7 @@ export default function SearchScreen() {
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => { setQuery(''); setResults([]); setSearched(false); }}>
-            <Text style={styles.clearButton}>✕</Text>
+            <X size={20} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -105,13 +112,17 @@ export default function SearchScreen() {
         </View>
       ) : searched && results.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={{ fontSize: 48 }}>🔎</Text>
-          <Text style={styles.emptyText}>No results found for "{query}"</Text>
+          <SearchIcon size={64} color={colors.textMuted} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            {t('search.noResults', language)} "{query}"
+          </Text>
         </View>
       ) : !searched ? (
         <View style={styles.centered}>
-          <Text style={{ fontSize: 64 }}>📖</Text>
-          <Text style={styles.emptyText}>Search for your next favorite book</Text>
+          <BookOpen size={64} color={colors.textMuted} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            {t('search.initial', language)}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -129,11 +140,9 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   screenTitle: {
     ...typography.h2,
-    color: colors.text,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
@@ -141,13 +150,11 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     marginHorizontal: spacing.lg,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     height: 48,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   searchIcon: {
     fontSize: 16,
@@ -155,11 +162,9 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: colors.text,
     ...typography.body,
   },
   clearButton: {
-    color: colors.textMuted,
     fontSize: 16,
     padding: spacing.xs,
   },
@@ -168,16 +173,15 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
     borderRadius: borderRadius.md,
     marginBottom: spacing.md,
     overflow: 'hidden',
+    borderWidth: 1,
     ...shadows.sm,
   },
   resultImage: {
     width: 80,
     height: 120,
-    backgroundColor: colors.surfaceLight,
   },
   coverImage: {
     width: '100%',
@@ -196,17 +200,14 @@ const styles = StyleSheet.create({
   },
   resultTitle: {
     ...typography.label,
-    color: colors.text,
     marginBottom: spacing.xs,
   },
   resultAuthor: {
     ...typography.caption,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   resultPrice: {
     ...typography.body,
-    color: colors.primary,
     fontWeight: '700',
   },
   centered: {
@@ -217,7 +218,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...typography.body,
-    color: colors.textSecondary,
     marginTop: spacing.md,
     textAlign: 'center',
   },

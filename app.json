@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "EriBooks",
-    "slug": "eribooks-mobile",
+    "slug": "eribooks",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -31,7 +31,16 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3d76b629-41f5-436d-b182-5ab105fa75c4"
+      }
+    },
+    "owner": "hajos-organization"
   }
 }

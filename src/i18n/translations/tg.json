@@ -1,0 +1,105 @@
+{
+  "common": {
+    "loading": "ይጻዓን ኣሎ...",
+    "error": "ስሕተት",
+    "success": "ዓወት",
+    "retry": "ኣዘምን",
+    "close": "ዕጾ",
+    "back": "ተመለስ",
+    "cancel": "ሰርዝ",
+    "save": "ኣቐምጥ",
+    "seeAll": "ኩሉ እተርእይ"
+  },
+  "navigation": {
+    "home": "ዋና",
+    "search": "ድለይ",
+    "cart": "መኽዘን",
+    "subscriptions": "ምዝገባ",
+    "settings": "ቅጥታት",
+    "profile": "መገለጺ",
+    "news": "ዜና"
+  },
+  "home": {
+    "title": "ኤሪ መጻሕፍቲ",
+    "subtitle": "ዝደለኻዮ ዓይነት መጽሓፍ ዳህስስ",
+    "featured": "ምሩጻት",
+    "trending": "ሕጂ ዘለዉ",
+    "buy": "ዓድግ",
+    "empty": "መጽሓፍ ኣይተረኽበን",
+    "emptySubtitle": "ንደሓር ተመለስ"
+  },
+  "news": {
+    "title": "ቅርብ እዋን ዜናታት",
+    "empty": "ዝተረኽበ ዜና የለን",
+    "readMore": "ተወሳኺ ኣንብብ"
+  },
+  "search": {
+    "title": "ድለይ",
+    "placeholder": "ብአርእስቲ ወይ ደራሲ ድለይ...",
+    "noResults": "ዝተረኽበ የለን ን",
+    "initial": "ዝደለኻዮ ዓይነት መጽሓፍ ዳህስስ"
+  },
+  "cart": {
+    "title": "መኽዘን",
+    "total": "ጠቅላላ",
+    "checkout": "ክፍሊት ፈጽም",
+    "empty": "ዘምቢልካ ጥርሑ 'ዩ ዘሎ",
+    "emptySubtitle": "መጻሕፍቲ መሪጽካ ናብ መኽዘን ኣእቱ",
+    "clearAll": "ኩሉ ሰርዝ"
+  },
+  "product": {
+    "addToCart": "ናብ ዘምቢል ኣእቱ",
+    "buyNow": "ሕጂ ዓድግ",
+    "description": "መግለጺ",
+    "reviews": "ርኢቶታት",
+    "by": "ብ",
+    "free": "ብነጻ"
+  },
+  "subscriptions": {
+    "title": "ምዝገባ",
+    "subtitle": "ብምምዝጋብ ምሉእ ረብሓ ኤሪ መጻሕፍቲ ክትረክብ ትኽእል ኢኻ።",
+    "subscribe": "ተመዝገብ",
+    "choosePlan": "ምዝገባ ምረጽ",
+    "popular": "ምሩጽ",
+    "monthly": "ወርሓዊ",
+    "yearly": "ዓመታዊ",
+    "faqTitle": "ብተደጋጋሚ ዝሕተቱ ሕቶታት",
+    "faq1_q": "ዝኾነ ግዜ ክስርዞ ይኽእል ድየ?",
+    "faq1_a": "እወ፡ ዝኾነ ግዜ ካብ ቅጥታት ሕሳብካ ምዝገባኻ ከተመሓድርን ክትስርዝን ትኽእል ኢኻ።",
+    "faq2_q": "ዝተሓብአ ክፍሊት ኣሎ ድዩ?",
+    "faq2_a": "ዝተሓብአ ክፍሊት የለን። ነቲ ንዝመረጽካዮ ውጥን ዝተሓበረ ክፍሊት ጥራይ ኢኻ ትኸፍል።",
+    "total": "ጠቅላላ",
+    "checkout": "ክፍሊት ፈጽም"
+  },
+  "settings": {
+    "title": "ቅጥታት",
+    "appearance": "ትርኢት",
+    "darkMode": "ጸሊም ድሕረ-ባይታ",
+    "language": "ቋንቋ",
+    "support": "ደገፍ",
+    "help": "መአኸል ደገፍ",
+    "terms": "ውዕል ኣገልግሎት",
+    "privacy": "ፖሊሲ ግላዊነት",
+    "logout": "ውጻእ",
+    "login": "እቶ / ተመዝገብ",
+    "loginPromo": "ብምምዝጋብ መጻሕፍትኻ ኣብ ኩሉ መሳርሒታትካ ክትረክብ ትኽእል ኢኻ",
+    "version": "ዕርቅና"
+  },
+  "forms": {
+    "cancel": "ሰርዝ",
+    "confirm": "አረጋግጥ"
+  },
+  "profile": {
+    "library": "ቤተ-መጻሕፍተይ",
+    "myBooks": "መጻሕፍተይ",
+    "orders": "ታሪኽ ትእዛዛት",
+    "accountSettings": "ቅጥታት ሕሳብ",
+    "editProfile": "መገለጺ ኣመሓይሽ",
+    "proMember": "ምሩጽ ኣባል"
+  },
+  "auth": {
+    "google": "ብጉግል ቀጽል",
+    "signInDesc": "መጻሕፍትኻ ንምርካብ እቶ",
+    "termsPrompt": "ብምእታውካ፡ ኣብ ውዕል ኣገልግሎትን ፖሊሲ ግላዊነትን ትሰማማዕ ኣለኻ።"
+  }
+}

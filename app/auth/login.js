@@ -10,118 +10,138 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginWithGoogle, resetError, checkAuth } from '../../src/lib/features/auth/authSlice';
-import { secureStorage } from '../../src/lib/security/dataProtection';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import * as AuthSession from 'expo-auth-session';
-import { colors, spacing, borderRadius, typography } from '../../src/theme';
-
-// Required for web browser session
-WebBrowser.maybeCompleteAuthSession();
+import {
+  X,
+  BookOpen,
+  Chrome,
+  AlertCircle
+} from 'lucide-react-native';
+import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
+import { t } from '../../src/i18n';
+import { loginUser, loginWithGoogle, resetError } from '../../src/lib/features/auth/authSlice';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 export default function LoginScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.auth);
+  const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
+  const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
+  const colors = getColors(theme);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Navigate to the main tabs after successful login
+      // Using replace ensures the login screen is removed from history
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+      offlineAccess: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (error) {
+      // Clear error after a short delay or on next attempt
+      const timer = setTimeout(() => {
+        dispatch(resetError());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleGoogleLogin = async () => {
     try {
-      const authUrl = `${process.env.EXPO_PUBLIC_API_BASE_URL}/api/auth/google-login?isNativeApp=true`;
-      const redirectUri = AuthSession.makeRedirectUri({
-        scheme: 'eribooks',
-        path: 'auth/callback'
-      });
-
-      console.log('Opening Auth Session:', authUrl);
-      console.log('Expecting Redirect to:', redirectUri);
-
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      if (result.type === 'success' && result.url) {
-        console.log('Auth Session Success:', result.url);
-        const params = new URLSearchParams(result.url.split('?')[1]);
-        const accessToken = params.get('accessToken') || params.get('token');
-        const refreshToken = params.get('refreshToken');
-
-        if (accessToken) {
-          console.log('Backend tokens received via deep link');
-          handleBackendTokens(accessToken, refreshToken);
-        } else {
-          console.warn('Success but no tokens in URL');
-        }
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.idToken || userInfo.data?.idToken;
+      
+      if (idToken) {
+        console.log('Google login native success, exchanging idToken with backend...');
+        dispatch(loginWithGoogle({ idToken }));
       } else {
-        console.log('Auth Session Result:', result.type);
+        console.warn('Google login native success but no idToken found:', userInfo);
       }
     } catch (error) {
-      console.error('Google Login Error:', error);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('User cancelled the login flow');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log('Sign in is in progress already');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        console.log('Play services not available or outdated');
+      } else {
+        console.error('Some other error happened:', error.message);
+      }
     }
   };
 
-  const handleBackendTokens = async (accessToken, refreshToken) => {
-    try {
-      if (accessToken) await secureStorage.setItem('accessToken', accessToken);
-      if (refreshToken) await secureStorage.setItem('refreshToken', refreshToken);
-      await secureStorage.setItem('isLoggedIn', 'true');
-      
-      await dispatch(checkAuth({ force: true }));
+  const handleClose = () => {
+    if (router.canGoBack()) {
       router.back();
-    } catch (err) {
-      console.error('Error storing backend tokens:', err);
+    } else {
+      router.replace('/(tabs)');
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ImageBackground
         source={{ uri: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop' }}
         style={styles.backgroundImage}
       >
-        <View style={styles.overlay}>
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
           {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-            <Text style={styles.closeText}>✕</Text>
+          <TouchableOpacity
+            style={[styles.closeButton, { backgroundColor: colors.white10 }]}
+            onPress={handleClose}
+          >
+            <X size={20} color="#FFF" />
           </TouchableOpacity>
 
           <View style={styles.content}>
             <View style={styles.headerContainer}>
-              <View style={styles.iconContainer}>
-                <Text style={{ fontSize: 64 }}>📚</Text>
+              <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40' }]}>
+                <BookOpen size={48} color={colors.primary} />
               </View>
-              <Text style={styles.title}>EriBooks</Text>
-              <Text style={styles.subtitle}>Discover a world of knowledge</Text>
+              <Text style={[styles.title, { color: '#FFF' }]}>EriBooks</Text>
+              <Text style={[styles.subtitle, { color: 'rgba(255,255,255,0.7)' }]}>
+                {t('home.subtitle', language)}
+              </Text>
             </View>
 
-            <View style={styles.card}>
-              <Text style={styles.welcomeText}>Welcome back</Text>
-              <Text style={styles.signInText}>Sign in to access your library</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface + 'CC', borderColor: colors.border }]}>
+              <Text style={[styles.welcomeText, { color: '#FFF' }]}>{t('settings.login', language)}</Text>
+              <Text style={[styles.signInText, { color: 'rgba(255,255,255,0.6)' }]}>{t('auth.signInDesc', language) || 'Sign in to access your library'}</Text>
 
               {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
+                <View style={[styles.errorContainer, { backgroundColor: colors.error + '20', borderColor: colors.error + '40' }]}>
+                  <AlertCircle size={16} color={colors.error} style={{ marginRight: 8 }} />
+                  <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                 </View>
               )}
 
               <TouchableOpacity
-                style={[styles.googleButton, loading && styles.googleButtonDisabled]}
+                style={[styles.googleButton, { backgroundColor: '#FFF' }, loading && styles.googleButtonDisabled]}
                 onPress={handleGoogleLogin}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color={colors.text} />
+                  <ActivityIndicator color="#000" />
                 ) : (
                   <>
                     <View style={styles.googleIconWrapper}>
-                      <Text style={{ fontSize: 18 }}>G</Text>
+                      <Chrome size={20} color="#000" />
                     </View>
-                    <Text style={styles.googleButtonText}>Continue with Google</Text>
+                    <Text style={[styles.googleButtonText, { color: '#000' }]}>{t('auth.google', language) || 'Continue with Google'}</Text>
                   </>
                 )}
               </TouchableOpacity>
-              
-              <Text style={styles.termsText}>
-                By signing in, you agree to our Terms of Service and Privacy Policy.
+
+              <Text style={[styles.termsText, { color: 'rgba(255,255,255,0.5)' }]}>
+                {t('auth.termsPrompt', language) || 'By signing in, you agree to our Terms of Service and Privacy Policy.'}
               </Text>
             </View>
           </View>
@@ -134,7 +154,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   backgroundImage: {
     flex: 1,
@@ -160,7 +179,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   closeText: {
-    color: colors.text,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -187,13 +205,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 42,
     fontWeight: '800',
-    color: colors.text,
     letterSpacing: -1,
     marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
   card: {
@@ -206,13 +222,11 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     ...typography.h2,
-    color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   signInText: {
     ...typography.body,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
@@ -226,14 +240,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...typography.bodySmall,
-    color: colors.error,
     textAlign: 'center',
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.text,
     borderRadius: borderRadius.full,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
@@ -252,7 +264,6 @@ const styles = StyleSheet.create({
   },
   termsText: {
     ...typography.caption,
-    color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.xl,
     lineHeight: 18,

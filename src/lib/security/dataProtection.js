@@ -82,8 +82,8 @@ export const sanitizeData = (data, options = {}) => {
     if (typeof obj === 'object') {
       const sanitized = {};
       for (const [key, value] of Object.entries(obj)) {
-        if (isSensitiveField(key)) {
-          if (mask) sanitized[key] = maskValue;
+        if (isSensitiveField(key) && mask) {
+          sanitized[key] = maskValue;
         } else {
           sanitized[key] = sanitize(value, depth + 1);
         }

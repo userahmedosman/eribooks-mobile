@@ -38,6 +38,16 @@ const secureRequestInterceptor = async (url, options = {}) => {
 
   // Get stored access token
   const accessToken = await getAccessToken();
+  if (accessToken) {
+    console.log('[API] Using Access Token for:', url);
+  } else {
+    console.warn('[API] No Access Token for:', url);
+  }
+  if (accessToken) {
+    safeLog('info', 'Using Access Token', { token: '[REDACTED]' });
+  } else {
+    safeLog('warn', 'No Access Token found for request', { url });
+  }
 
   secureOptions.headers = {
     'Content-Type': 'application/json',
@@ -126,12 +136,13 @@ const customFetch = async (url, options = {}) => {
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
 
-          // Store new tokens
-          if (refreshData.accessToken) {
-            await secureStorage.setItem('accessToken', refreshData.accessToken);
+          // Store new tokens (handle both top-level and .data nesting)
+          const tokens = refreshData.data || refreshData;
+          if (tokens.accessToken) {
+            await secureStorage.setItem('accessToken', tokens.accessToken);
           }
-          if (refreshData.refreshToken) {
-            await secureStorage.setItem('refreshToken', refreshData.refreshToken);
+          if (tokens.refreshToken) {
+            await secureStorage.setItem('refreshToken', tokens.refreshToken);
           }
 
           safeLog('info', 'Token refresh successful');
@@ -190,10 +201,12 @@ const handleResponse = async (response) => {
     try {
       const jsonError = JSON.parse(error);
       const sanitizedError = sanitizeData(jsonError);
-      throw new Error(sanitizedError.title || sanitizedError.message || 'API Error');
+      const errorMsg = sanitizedError.errorMessage || sanitizedError.message || sanitizedError.title || 'API Error';
+      const details = sanitizedError.details ? ` (${sanitizedError.details})` : '';
+      throw new Error(`${errorMsg}${details}`);
     } catch (e) {
       if (e.message !== 'API Error' && !e.message.includes('Too many') && !e.message.includes('Server error')) {
-        throw new Error(error || response.statusText || 'An unexpected error occurred');
+        throw new Error(e.message || error || response.statusText || 'An unexpected error occurred');
       }
       throw e;
     }
@@ -228,24 +241,27 @@ export const api = {
         body: JSON.stringify(sanitizedData),
       }).then(handleResponse);
 
-      // Store tokens from response (mobile uses bearer tokens, not cookies)
+      // Store tokens from response (handle both top-level and .data nesting)
       if (response) {
-        if (response.accessToken) await secureStorage.setItem('accessToken', response.accessToken);
-        if (response.refreshToken) await secureStorage.setItem('refreshToken', response.refreshToken);
+        const tokens = response.data || response;
+        if (tokens.accessToken) await secureStorage.setItem('accessToken', tokens.accessToken);
+        if (tokens.refreshToken) await secureStorage.setItem('refreshToken', tokens.refreshToken);
         await secureStorage.setItem('isLoggedIn', 'true');
       }
 
       return response;
     },
     logout: async () => {
+      // Optimistically clear target device tokens before network request
+      await secureStorage.clear();
       try {
-        const response = await customFetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
-        return await handleResponse(response);
-      } catch (error) {
-        console.warn('[API] Logout call failed:', error.message);
+        // Only return if it succeeds on time without awaiting it as blocking
+        customFetch(`${API_URL}/api/auth/logout`, { method: 'POST' })
+          .then(handleResponse)
+          .catch(e => console.warn('[API] Background logout failed', e.message));
         return { success: true, message: 'Local state cleared' };
-      } finally {
-        await secureStorage.clear();
+      } catch (error) {
+        return { success: true, message: 'Local state cleared' };
       }
     },
     refreshToken: () =>
@@ -340,5 +356,9 @@ export const api = {
     getById: (id) => customFetch(`${API_URL}/api/authors/${id}`).then(handleResponse),
     getByName: (name) =>
       customFetch(`${API_URL}/api/authors/by-name/${encodeURIComponent(name)}`).then(handleResponse),
+  },
+  articles: {
+    getAll: () => customFetch(`${API_URL}/api/articles`).then(handleResponse),
+    getById: (id) => customFetch(`${API_URL}/api/articles/${id}`).then(handleResponse),
   },
 };

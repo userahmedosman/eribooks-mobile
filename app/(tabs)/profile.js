@@ -11,15 +11,15 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
-import { 
-  User, 
-  Book, 
-  Package, 
-  Star, 
-  Edit3, 
-  Globe, 
-  LogOut, 
-  ChevronRight, 
+import {
+  User,
+  Book,
+  Package,
+  Star,
+  Edit3,
+  Globe,
+  LogOut,
+  ChevronRight,
   ShieldCheck,
   HelpCircle,
   Settings,
@@ -39,17 +39,33 @@ export default function ProfileScreen() {
   const isDark = theme === 'dark';
 
   const handleLogout = () => {
+    console.log('[Profile] Logout button clicked');
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(t('settings.logout', language) + '?');
+      if (confirmed) {
+        dispatch(logoutUser()).then(() => {
+          router.replace('/');
+        }).catch((err) => console.error('Logout error:', err));
+      }
+      return;
+    }
+
     Alert.alert(
-      t('settings.logout', language), 
-      'Are you sure you want to log out?', 
+      t('settings.logout', language) || 'Log Out',
+      'Are you sure you want to log out?',
       [
-        { text: t('forms.cancel', language), style: 'cancel' },
+        { text: t('forms.cancel', language) || 'Cancel', style: 'cancel' },
         {
-          text: t('settings.logout', language),
+          text: t('settings.logout', language) || 'Log Out',
           style: 'destructive',
           onPress: async () => {
-            await dispatch(logoutUser());
-            router.replace('/');
+            try {
+              await dispatch(logoutUser());
+              router.replace('/');
+            } catch (err) {
+              console.error('Logout error:', err);
+            }
           },
         },
       ]
@@ -71,7 +87,7 @@ export default function ProfileScreen() {
             <Text style={[styles.notSignedSubtext, { color: 'rgba(255,255,255,0.7)' }]}>
               Sign in to track your reading progress, access purchases, and manage subscriptions.
             </Text>
-            
+
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: colors.primary }]}
               onPress={() => router.push('/auth/login')}
@@ -126,7 +142,7 @@ export default function ProfileScreen() {
             <ChevronRight size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/(tabs)/subscriptions')}
           >
@@ -149,9 +165,9 @@ export default function ProfileScreen() {
             <ChevronRight size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-             style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
-             onPress={() => router.push('/(tabs)/settings')}
+          <TouchableOpacity
+            style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => router.push('/(tabs)/settings')}
           >
             <View style={[styles.menuIconBox, { backgroundColor: colors.surfaceLight }]}>
               <Globe size={20} color={colors.primary} />
@@ -161,13 +177,16 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.logoutButton, { backgroundColor: colors.error + '10', borderColor: colors.error + '20' }]} 
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: colors.error + '10', borderColor: colors.error + '20' }]}
           onPress={handleLogout}
         >
           <LogOut size={20} color={colors.error} style={{ marginRight: 8 }} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>{t('settings.logout', language)}</Text>
+          <Text style={[styles.logoutText, { color: colors.error }]}>{t('settings.logout', language) || 'Log Out'}</Text>
         </TouchableOpacity>
+
+        {/* Footer spacing to ensure button is not hidden by tab bar */}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -300,6 +319,8 @@ const styles = StyleSheet.create({
     ...typography.h2,
   },
   logoutButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginHorizontal: spacing.lg,
     marginTop: spacing.xxl,
     borderRadius: borderRadius.lg,

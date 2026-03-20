@@ -38,6 +38,18 @@ export default function SettingsScreen() {
   const isDark = theme === 'dark';
 
   const handleLogout = () => {
+    console.log('[Settings] Logout button clicked');
+    
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(t('settings.logout', language) + '?');
+      if (confirmed) {
+        dispatch(logoutUser()).then(() => {
+          router.replace('/');
+        }).catch((err) => console.error('Logout error:', err));
+      }
+      return;
+    }
+
     Alert.alert(
       t('settings.logout', language), 
       'Are you sure you want to log out?', 

@@ -16,10 +16,14 @@ import {
   Chrome,
   AlertCircle
 } from 'lucide-react-native';
-import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
+import { getColors, spacing, borderRadius, typography } from '../../src/theme';
 import { t } from '../../src/i18n';
-import { loginUser, loginWithGoogle, resetError } from '../../src/lib/features/auth/authSlice';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { loginWithGoogle, resetError } from '../../src/lib/features/auth/authSlice';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { ResponseType } from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -28,24 +32,41 @@ export default function LoginScreen() {
   const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
   const colors = getColors(theme);
 
+  // expo-auth-session works on ALL platforms (web, Expo Go, and production builds)
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    responseType: ResponseType.IdToken,
+    scopes: ['openid', 'profile', 'email'],
+    redirectUri: Platform.select({
+      web: undefined, // defaults to window.location.origin
+      native: Google.makeRedirectUri({ scheme: 'eribooks' }),
+    }),
+  });
+
   useEffect(() => {
     if (isAuthenticated) {
-      // Navigate to the main tabs after successful login
-      // Using replace ensures the login screen is removed from history
       router.replace('/(tabs)');
     }
   }, [isAuthenticated]);
 
+  // Handle auth response (same flow for all platforms)
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-      offlineAccess: true,
-    });
-  }, []);
+    if (response?.type === 'success') {
+      console.log('[Auth] OAuth response params:', JSON.stringify(response.params));
+      const idToken = response.params?.id_token;
+      if (idToken) {
+        console.log('[Auth] Got id_token, exchanging with backend...');
+        dispatch(loginWithGoogle({ idToken }));
+      } else {
+        console.warn('[Auth] No id_token in response. Full params:', response.params);
+      }
+    } else if (response?.type === 'error') {
+      console.error('[Auth] Google OAuth error:', response.error);
+    }
+  }, [response]);
 
   useEffect(() => {
     if (error) {
-      // Clear error after a short delay or on next attempt
       const timer = setTimeout(() => {
         dispatch(resetError());
       }, 5000);
@@ -53,29 +74,9 @@ export default function LoginScreen() {
     }
   }, [error]);
 
-  const handleGoogleLogin = async () => {
-    try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.idToken || userInfo.data?.idToken;
-      
-      if (idToken) {
-        console.log('Google login native success, exchanging idToken with backend...');
-        dispatch(loginWithGoogle({ idToken }));
-      } else {
-        console.warn('Google login native success but no idToken found:', userInfo);
-      }
-    } catch (error) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('User cancelled the login flow');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        console.log('Sign in is in progress already');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        console.log('Play services not available or outdated');
-      } else {
-        console.error('Some other error happened:', error.message);
-      }
-    }
+  // Unified Google sign-in for all platforms via expo-auth-session
+  const handleGoogleLogin = () => {
+    promptAsync();
   };
 
   const handleClose = () => {

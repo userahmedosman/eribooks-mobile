@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
@@ -49,7 +50,7 @@ export default function BookDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
 
   const colors = getColors(theme);
@@ -71,6 +72,12 @@ export default function BookDetailScreen() {
   const [playingChapterId, setPlayingChapterId] = useState(null);
   const [playingChapterUrl, setPlayingChapterUrl] = useState(null);
   const [audioChapters, setAudioChapters] = useState([]);
+
+  // Review submission state
+  const [isAddingReview, setIsAddingReview] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // ─── Fetch product data ───
   useEffect(() => {
@@ -100,13 +107,21 @@ export default function BookDetailScreen() {
   // ─── Set audio chapters from product/fullContent ───
   useEffect(() => {
     if (!product) return;
+    let chapters = [];
     if (accessStatus.hasAccess && fullContent?.audioChapters) {
-      // Full chapters with real audio URLs
-      setAudioChapters(fullContent.audioChapters);
+      chapters = [...fullContent.audioChapters];
     } else if (product.audioChapters) {
-      // Sample: chapters without audio urls (show locked)
-      setAudioChapters(product.audioChapters.map(c => ({ ...c, audioUrl: null })));
+      chapters = product.audioChapters.map(c => ({ ...c, audioUrl: null }));
     }
+    
+    // Sort chapters by chapterNumber or ID
+    chapters.sort((a, b) => {
+      const numA = a.chapterNumber || a.order || a.id || 0;
+      const numB = b.chapterNumber || b.order || b.id || 0;
+      return numA - numB;
+    });
+    
+    setAudioChapters(chapters);
   }, [accessStatus.hasAccess, fullContent, product]);
 
   // ─── Check subscription access once product is loaded ───
@@ -198,6 +213,7 @@ export default function BookDetailScreen() {
 
   // ─── Chapter play handler ───
   const handlePlayChapter = (chapter) => {
+    const chapterId = chapter.id || chapter.chapterId;
     const url = resolveUrl(
       accessStatus.hasAccess
         ? (chapter.audioUrl || chapter.url)
@@ -206,12 +222,13 @@ export default function BookDetailScreen() {
 
     if (!url) return; // locked chapter
 
-    if (playingChapterId === chapter.id) {
+    if (playingChapterId === String(chapterId)) {
       // Toggle off
       setPlayingChapterId(null);
       setPlayingChapterUrl(null);
     } else {
-      setPlayingChapterId(chapter.id);
+      console.log(`[Audio] Playing chapter ${chapterId}, URL: ${url}`);
+      setPlayingChapterId(String(chapterId));
       setPlayingChapterUrl(url);
     }
   };
@@ -229,6 +246,31 @@ export default function BookDetailScreen() {
     if (!isAuthenticated) { router.push('/auth/login'); return; }
     dispatch(addToCart({ productId: String(product.id) }));
     router.push('/cart');
+  };
+
+  const handleSubmitReview = async () => {
+    if (!newComment.trim() || !user?.id) return;
+    setIsSubmittingReview(true);
+    try {
+      await api.reviews.create({
+        ProductId: id,
+        Star: newRating,
+        Comment: newComment,
+        BookId: book.id,
+        CustomerId: user.id
+      });
+      // Refresh product to show new review
+      const res = await api.products.getById(id);
+      const updatedProduct = res?.data || res?.content || res?.item || res;
+      setProduct(Array.isArray(updatedProduct) ? updatedProduct[0] : updatedProduct);
+      setNewComment('');
+      setNewRating(5);
+      setIsAddingReview(false);
+    } catch (err) {
+      console.error('Failed to submit review:', err);
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const RatingStars = ({ rating }) => {
@@ -407,9 +449,8 @@ export default function BookDetailScreen() {
                 </View>
               </View>
 
-              {/* Chapter list */}
               {audioChapters.map((chapter, index) => {
-                const chapterId = chapter.id || chapter.chapterId;
+                const chapterId = String(chapter.id || chapter.chapterId || index);
                 const isPlaying = playingChapterId === chapterId;
                 const hasChapterUrl = accessStatus.hasAccess
                   ? !!resolveUrl(chapter.audioUrl || chapter.url)
@@ -466,34 +507,38 @@ export default function BookDetailScreen() {
                     </TouchableOpacity>
 
                     {/* Inline Audio Player for active chapter */}
-                    {isPlaying && playingChapterUrl && (
+                    {isPlaying && (
                       <View style={[styles.inlinePlayer, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
-                        <WebView
-                          source={{
-                            html: `
-                              <html>
-                                <head>
-                                  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-                                  <style>
-                                    body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background-color: transparent; }
-                                    audio { width: 100%; outline: none; border-radius: 8px; }
-                                  </style>
-                                </head>
-                                <body>
-                                  <audio controls controlsList="nodownload noplaybackrate" autoplay>
-                                    <source src="${playingChapterUrl}" type="audio/mpeg">
-                                  </audio>
-                                </body>
-                              </html>
-                            `
-                          }}
-                          style={{ height: 56, width: '100%' }}
-                          scrollEnabled={false}
-                          bounces={false}
-                          mediaPlaybackRequiresUserAction={false}
-                          allowsInlineMediaPlayback={true}
-                          backgroundColor="transparent"
-                        />
+                        {playingChapterUrl ? (
+                          <WebView
+                            source={{
+                              html: `
+                                <html>
+                                  <head>
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+                                    <style>
+                                      body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background-color: transparent; }
+                                      audio { width: 100%; outline: none; border-radius: 8px; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <audio controls controlsList="nodownload noplaybackrate" autoplay>
+                                      <source src="${playingChapterUrl}" type="audio/mpeg">
+                                    </audio>
+                                  </body>
+                                </html>
+                              `
+                            }}
+                            style={{ height: 60, width: '100%' }}
+                            scrollEnabled={false}
+                            mediaPlaybackRequiresUserAction={false}
+                            allowsInlineMediaPlayback={true}
+                          />
+                        ) : (
+                          <View style={{ padding: spacing.md, alignItems: 'center' }}>
+                            <Text style={{ color: colors.error, fontSize: 12 }}>Audio URL not available</Text>
+                          </View>
+                        )}
                       </View>
                     )}
                   </View>
@@ -547,9 +592,68 @@ export default function BookDetailScreen() {
               </View>
             ))
           ) : (
-            <Text style={[styles.description, { color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl }]}>
-              No reviews yet.
-            </Text>
+            <View style={styles.noReviewsBox}>
+              <Text style={[styles.description, { color: colors.textSecondary, textAlign: 'center' }]}>
+                No reviews yet.
+              </Text>
+            </View>
+          )}
+
+          {/* Add Review Section */}
+          {selectedTab === 'reviews' && isAuthenticated && !isAddingReview && (
+            <TouchableOpacity 
+              style={[styles.addReviewButton, { backgroundColor: colors.surface, borderColor: colors.primary }]}
+              onPress={() => setIsAddingReview(true)}
+            >
+              <Star size={18} color={colors.primary} />
+              <Text style={[styles.addReviewButtonText, { color: colors.primary }]}>Write a Review</Text>
+            </TouchableOpacity>
+          )}
+
+          {selectedTab === 'reviews' && isAuthenticated && isAddingReview && (
+            <View style={[styles.addReviewForm, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.addReviewHeader}>
+                <Text style={[styles.addReviewTitle, { color: colors.text }]}>Write a Review</Text>
+                <TouchableOpacity onPress={() => setIsAddingReview(false)}>
+                  <X size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>Your Rating</Text>
+              <View style={styles.ratingSelector}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity key={star} onPress={() => setNewRating(star)}>
+                    <Star 
+                      size={32} 
+                      color={star <= newRating ? colors.warning : colors.border} 
+                      fill={star <= newRating ? colors.warning : 'transparent'} 
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={[styles.reviewInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+                placeholder="Share your thoughts about this book..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={4}
+                value={newComment}
+                onChangeText={setNewComment}
+              />
+
+              <TouchableOpacity 
+                style={[styles.submitReviewButton, { backgroundColor: colors.primary }]}
+                onPress={handleSubmitReview}
+                disabled={isSubmittingReview || !newComment.trim()}
+              >
+                {isSubmittingReview ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.submitReviewText}>Submit Review</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -720,4 +824,28 @@ const styles = StyleSheet.create({
   subscribeButton: { flex: 1, flexDirection: 'row', borderRadius: borderRadius.lg, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
   buyNowButton: { flex: 1, borderRadius: borderRadius.lg, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
   actionButtonText: { ...typography.button, color: '#FFF' },
+  
+  // Reviews
+  noReviewsBox: { marginTop: spacing.xl, marginBottom: spacing.lg },
+  addReviewButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    padding: spacing.md, borderRadius: borderRadius.lg, borderWidth: 1, marginTop: spacing.lg,
+  },
+  addReviewButtonText: { ...typography.label, fontWeight: '700' },
+  addReviewForm: {
+    padding: spacing.lg, borderRadius: borderRadius.xl, borderWidth: 1, marginTop: spacing.lg,
+  },
+  addReviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  addReviewTitle: { ...typography.h3 },
+  ratingLabel: { ...typography.caption, marginBottom: spacing.xs },
+  ratingSelector: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  reviewInput: {
+    borderRadius: borderRadius.lg, borderWidth: 1, padding: spacing.md, 
+    minHeight: 100, textAlignVertical: 'top', marginBottom: spacing.lg,
+    ...typography.body,
+  },
+  submitReviewButton: {
+    padding: spacing.md, borderRadius: borderRadius.lg, alignItems: 'center',
+  },
+  submitReviewText: { ...typography.button, color: '#FFF' },
 });

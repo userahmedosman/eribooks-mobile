@@ -10,7 +10,8 @@ import {
   CreditCard,
   ChevronRight,
   TrendingUp,
-  Star
+  Star,
+  HelpCircle,
 } from 'lucide-react-native';
 import { fetchSubscriptionPlans } from '../../src/lib/features/subscription/subscriptionSlice';
 import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "28560180148",
+    "project_id": "eribooks-2a28e",
+    "storage_bucket": "eribooks-2a28e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28560180148:android:4841832c60c9acc29d68e1",
+        "android_client_info": {
+          "package_name": "com.eribooks.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlmy1c_Au_h2QVypn2gQWg1TKmn2Bpvc8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

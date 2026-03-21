@@ -21,6 +21,7 @@ import { t } from '../../src/i18n';
 import { loginWithGoogle, resetError } from '../../src/lib/features/auth/authSlice';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import { ResponseType } from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -39,17 +40,26 @@ export default function LoginScreen() {
     scopes: ['openid', 'profile', 'email'],
     redirectUri: Platform.select({
       web: undefined, // defaults to window.location.origin
-      native: Google.makeRedirectUri({ scheme: 'eribooks' }),
+      native: AuthSession.makeRedirectUri({ scheme: 'eribooks' }),
     }),
   });
 
+  // Configure native GoogleSignin for Android
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/(tabs)');
+    if (Platform.OS !== 'web') {
+      try {
+        const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+        GoogleSignin.configure({
+          webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID, // Use the same client ID
+          offlineAccess: true,
+        });
+      } catch (e) {
+        console.warn('[Native] Could not configure GoogleSignin:', e.message);
+      }
     }
-  }, [isAuthenticated]);
+  }, []);
 
-  // Handle auth response (same flow for all platforms)
+  // Handle auth response (for web flow)
   useEffect(() => {
     if (response?.type === 'success') {
       console.log('[Auth] OAuth response params:', JSON.stringify(response.params));
@@ -74,9 +84,40 @@ export default function LoginScreen() {
     }
   }, [error]);
 
-  // Unified Google sign-in for all platforms via expo-auth-session
-  const handleGoogleLogin = () => {
-    promptAsync();
+  // Auto-redirect to profile after successful login
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('[Auth] User is authenticated, redirecting to profile...');
+      router.replace('/(tabs)/profile');
+    }
+  }, [isAuthenticated]);
+  const handleGoogleLogin = async () => {
+    if (Platform.OS === 'web') {
+      promptAsync();
+      return;
+    }
+
+    // Native flow (since we are now in a Dev Client)
+    try {
+      const { GoogleSignin, statusCodes } = require('@react-native-google-signin/google-signin');
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken || userInfo.idToken;
+
+      if (idToken) {
+        console.log('[Native] Google login success, exchanging idToken with backend...');
+        dispatch(loginWithGoogle({ idToken }));
+      } else {
+        console.warn('[Native] Google login success but no idToken found:', userInfo);
+      }
+    } catch (error) {
+      console.error('[Native] Google sign-in error:', error.message);
+      if (error.code) {
+        console.error('[Native] Error Code:', error.code);
+      }
+      // Fallback to browser flow if native fails for some reason
+      promptAsync();
+    }
   };
 
   const handleClose = () => {

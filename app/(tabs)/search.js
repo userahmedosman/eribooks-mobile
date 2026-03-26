@@ -38,7 +38,7 @@ export default function SearchScreen() {
     setSearched(true);
     try {
       const data = await api.products.search({ searchTerm: query.trim(), pageSize: 30 });
-      const items = data?.content || data?.items || data || [];
+      const items = data?.data || data?.content || data?.items || data?.$values || data || [];
       setResults(Array.isArray(items) ? items : []);
     } catch (err) {
       setResults([]);

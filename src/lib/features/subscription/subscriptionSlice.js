@@ -34,15 +34,11 @@ export const purchaseSubscription = createAsyncThunk(
   }
 );
 
-export const confirmSubscriptionPayment = createAsyncThunk(
-  'subscriptions/confirmPayment',
-  async (arg, { rejectWithValue }) => {
+export const confirmNewPayment = createAsyncThunk(
+  'subscriptions/confirmNewPayment',
+  async ({ customerId, subscriptionPlanId, paypalSubscriptionId }, { rejectWithValue }) => {
     try {
-      const isObject = typeof arg === 'object' && arg !== null;
-      const subscriptionId = isObject ? arg.subscriptionId : arg;
-      const paypalData = isObject ? { ...arg } : {};
-      if (isObject) delete paypalData.subscriptionId;
-      return await api.subscriptions.confirmPayment(subscriptionId, paypalData);
+      return await api.subscriptions.confirmNewPayment({ customerId, subscriptionPlanId, paypalSubscriptionId });
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -102,17 +98,11 @@ const subscriptionSlice = createSlice({
       .addCase(purchaseSubscription.fulfilled, (state, action) => { state.purchaseLoading = false; state.purchaseResponse = action.payload; })
       .addCase(purchaseSubscription.rejected, (state, action) => { state.purchaseLoading = false; state.purchaseError = action.payload; })
 
-      .addCase(confirmSubscriptionPayment.pending, (state) => { state.purchaseLoading = true; state.purchaseError = null; })
-      .addCase(confirmSubscriptionPayment.fulfilled, (state, action) => {
+      .addCase(confirmNewPayment.pending, (state) => { state.purchaseLoading = true; state.purchaseError = null; })
+      .addCase(confirmNewPayment.fulfilled, (state) => {
         state.purchaseLoading = false;
-        const updated = action.payload?.subscription || (action.payload?.id ? action.payload : null);
-        if (updated) {
-          const index = state.userSubscriptions.findIndex((s) => s.id === updated.id);
-          if (index !== -1) state.userSubscriptions[index] = updated;
-          else state.userSubscriptions.push(updated);
-        }
       })
-      .addCase(confirmSubscriptionPayment.rejected, (state, action) => { state.purchaseLoading = false; state.purchaseError = action.payload; })
+      .addCase(confirmNewPayment.rejected, (state, action) => { state.purchaseLoading = false; state.purchaseError = action.payload; })
 
       .addCase(cancelSubscription.fulfilled, (state, action) => {
         const { subscriptionId } = action.payload;

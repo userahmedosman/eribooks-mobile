@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   Platform,
   TextInput,
+  Alert,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   Star, 
@@ -114,10 +115,16 @@ export default function BookDetailScreen() {
       chapters = product.audioChapters.map(c => ({ ...c, audioUrl: null }));
     }
     
-    // Sort chapters by chapterNumber or ID
+    // Robust sort chapters by chapterNumber or ID
     chapters.sort((a, b) => {
-      const numA = a.chapterNumber || a.order || a.id || 0;
-      const numB = b.chapterNumber || b.order || b.id || 0;
+      const getNum = (obj) => {
+        const val = obj.chapterNumber ?? obj.order ?? obj.id ?? 0;
+        if (typeof val === 'number') return val;
+        const match = String(val).match(/\d+/);
+        return match ? parseInt(match[0], 10) : 0;
+      };
+      const numA = getNum(a);
+      const numB = getNum(b);
       return numA - numB;
     });
     
@@ -138,12 +145,14 @@ export default function BookDetailScreen() {
       if (isAuthenticated && id) {
         setIsLoadingAccess(true);
         try {
-          const accessData = await api.products.checkAccess(id);
+          const response = await api.products.checkAccess(id);
+          const accessData = response?.data || response?.content || response;
           if (accessData) {
             setAccessStatus(accessData);
             if (accessData.hasAccess) {
               try {
-                const contentData = await api.products.getContent(id);
+                const contentRes = await api.products.getContent(id);
+                const contentData = contentRes?.data || contentRes?.content || contentRes;
                 if (contentData) setFullContent(contentData);
               } catch (e) {
                 console.warn('[BookDetail] Could not fetch full content:', e.message);
@@ -160,6 +169,31 @@ export default function BookDetailScreen() {
 
     checkProductAccess();
   }, [isAuthenticated, id, product]);
+
+  // Refresh access status when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      if (product && isAuthenticated) {
+        const refreshAccess = async () => {
+          try {
+            const response = await api.products.checkAccess(id);
+            const accessData = response?.data || response?.content || response;
+            if (accessData) {
+              setAccessStatus(accessData);
+              if (accessData.hasAccess && !fullContent) {
+                const contentRes = await api.products.getContent(id);
+                const contentData = contentRes?.data || contentRes?.content || contentRes;
+                if (contentData) setFullContent(contentData);
+              }
+            }
+          } catch (err) {
+            console.warn('[BookDetail] Refresh access failed:', err.message);
+          }
+        };
+        refreshAccess();
+      }
+    }, [id, product, isAuthenticated, fullContent])
+  );
 
   if (loading) {
     return (
@@ -186,8 +220,13 @@ export default function BookDetailScreen() {
   const description = book.description || product.description || 'No description available.';
   const isFree = product.isFree || product.IsFree || Number(product.price) === 0;
   const price = isFree ? (t('product.free', language) || 'Free') : `$${Number(product.price || 0).toFixed(2)}`;
-  const rating = product.rating || product.averageRating;
+  
   const reviews = book.reviews || [];
+  const averageFromReviews = reviews.length > 0
+    ? reviews.reduce((acc, r) => acc + (Number(r.rating || r.star || 0)), 0) / reviews.length
+    : null;
+    
+  const rating = averageFromReviews !== null ? averageFromReviews : (product.rating || product.averageRating || 0);
 
   const productType = product.productType; // 0: Bundle, 1: eBook, 2: Audiobook
   const isEbook = productType === 0 || productType === 1;
@@ -290,9 +329,8 @@ export default function BookDetailScreen() {
 
         {/* ── Header ── */}
         <View style={styles.topHeader}>
-          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.back()}>
-            <ArrowLeft size={24} color={colors.text} />
-          </TouchableOpacity>
+          {/* Native header already has a back button, removing redundant one */}
+          <View style={{ width: 40 }} /> 
           {isLoadingAccess ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : accessBadgeLabel ? (
@@ -456,18 +494,32 @@ export default function BookDetailScreen() {
                   ? !!resolveUrl(chapter.audioUrl || chapter.url)
                   : !!resolveUrl(chapter.SampleAudioUrl || chapter.sampleAudioUrl || chapter.sampleUrl);
 
+                const handleChapterPress = () => {
+                  if (!hasChapterUrl) {
+                    Alert.alert(
+                      "Content Locked",
+                      "This chapter is available for subscribers. Would you like to see our subscription plans?",
+                      [
+                        { text: "Later", style: "cancel" },
+                        { text: "View Plans", onPress: () => router.push('/(tabs)/subscriptions') }
+                      ]
+                    );
+                    return;
+                  }
+                  handlePlayChapter(chapter);
+                };
+
                 return (
                   <View key={chapterId || index}>
                     <TouchableOpacity
                       style={[
                         styles.chapterRow,
                         {
-                          backgroundColor: isPlaying ? colors.primary + '15' : colors.surface,
+                          backgroundColor: isPlaying ? colors.primary + '10' : 'transparent',
                           borderColor: isPlaying ? colors.primary + '40' : colors.border,
                         }
                       ]}
-                      onPress={() => handlePlayChapter(chapter)}
-                      disabled={!hasChapterUrl}
+                      onPress={handleChapterPress}
                     >
                       {/* Track number / play indicator */}
                       <View style={[
@@ -489,9 +541,12 @@ export default function BookDetailScreen() {
 
                       {/* Chapter info */}
                       <View style={styles.chapterInfo}>
-                        <Text style={[styles.chapterTitle, { color: isPlaying ? colors.primary : colors.text }]} numberOfLines={1}>
-                          {chapter.title || chapter.chapterTitle || `Chapter ${chapter.chapterNumber || index + 1}`}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={[styles.chapterTitle, { color: isPlaying ? colors.primary : colors.text }]} numberOfLines={1}>
+                            {chapter.title || chapter.chapterTitle || `Chapter ${chapter.chapterNumber || index + 1}`}
+                          </Text>
+                          {!hasChapterUrl && <Lock size={12} color={colors.textMuted} />}
+                        </View>
                         {isPlaying && (
                           <Text style={[styles.chapterNowPlaying, { color: colors.primary }]}>Now Playing</Text>
                         )}

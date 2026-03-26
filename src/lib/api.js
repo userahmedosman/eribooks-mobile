@@ -86,7 +86,11 @@ const customFetch = async (url, options = {}) => {
   // Apply security interceptor (async — gets token from SecureStore)
   const secureOptions = await secureRequestInterceptor(url, options);
 
-  const config = { ...secureOptions };
+  // MUST include credentials to send httpOnly cookies that the .NET backend relies on
+  const config = { 
+    ...secureOptions,
+    credentials: 'include',
+  };
 
   safeLog('info', 'API Request', {
     url: url.replace(API_URL, ''),
@@ -130,6 +134,7 @@ const customFetch = async (url, options = {}) => {
             'ngrok-skip-browser-warning': 'true',
             ...(refreshToken ? { Authorization: `Bearer ${refreshToken}` } : {}),
           },
+          credentials: 'include', // Needed for HttpOnly refresh cookie in .NET APIs
           body: JSON.stringify({ refreshToken }),
         });
 
@@ -194,11 +199,15 @@ const handleResponse = async (response) => {
       url: response.url?.replace(API_URL, '') || 'unknown',
     });
 
+    if (response.status === 401) throw new Error('Unauthorized or session expired');
     if (response.status === 429) throw new Error('Too many requests. Please wait a moment and try again.');
     if (response.status >= 500) throw new Error('Server error. Please try again later.');
     if (response.status === 404) throw new Error('The requested resource was not found.');
 
     try {
+      if (!error || error.trim() === '') {
+        throw new Error(response.statusText || 'An unexpected error occurred');
+      }
       const jsonError = JSON.parse(error);
       const sanitizedError = sanitizeData(jsonError);
       const errorMsg = sanitizedError.errorMessage || sanitizedError.message || sanitizedError.title || 'API Error';
@@ -330,17 +339,11 @@ export const api = {
         body: JSON.stringify(data),
       }).then(handleResponse);
     },
-    confirmPayment: (subscriptionId, data = {}) => {
-      const idStr = String(subscriptionId).trim();
-      const isPayPalId = idStr.startsWith('I-');
-      const url = isPayPalId
-        ? `${API_URL}/api/subscriptions/confirm-payment/${idStr}`
-        : `${API_URL}/api/subscriptions/${idStr}/confirm-payment`;
-      return customFetch(url, {
+    confirmNewPayment: (data) =>
+      customFetch(`${API_URL}/api/subscriptions/confirm-new-payment`, {
         method: 'POST',
-        body: isPayPalId ? null : JSON.stringify(data),
-      }).then(handleResponse);
-    },
+        body: JSON.stringify(data),
+      }).then(handleResponse),
     cancel: (subscriptionId, reason) =>
       customFetch(`${API_URL}/api/subscriptions/${subscriptionId}/cancel`, {
         method: 'POST',

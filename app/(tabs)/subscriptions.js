@@ -1,26 +1,29 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  Check, 
-  Zap, 
-  Shield, 
-  Globe, 
-  Clock, 
+import {
+  Check,
+  Zap,
+  Shield,
+  Globe,
+  Clock,
   CreditCard,
   ChevronRight,
   TrendingUp,
   Star,
   HelpCircle,
 } from 'lucide-react-native';
-import { fetchSubscriptionPlans } from '../../src/lib/features/subscription/subscriptionSlice';
+import { fetchSubscriptionPlans, fetchUserSubscriptions, purchaseSubscription, confirmNewPayment, clearPurchaseState } from '../../src/lib/features/subscription/subscriptionSlice';
 import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '../../src/i18n';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { Alert } from 'react-native';
 
 export default function SubscriptionsScreen() {
   const dispatch = useDispatch();
-  const { plans, plansLoading, plansError } = useSelector((state) => state.subscriptions);
+  const { plans, plansLoading, plansError, userSubscriptions, purchaseLoading, purchaseError, purchaseResponse } = useSelector((state) => state.subscriptions);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
 
@@ -30,6 +33,101 @@ export default function SubscriptionsScreen() {
   useEffect(() => {
     dispatch(fetchSubscriptionPlans());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      dispatch(fetchUserSubscriptions(user.id));
+    }
+  }, [dispatch, isAuthenticated, user]);
+
+  const handleSubscribe = async (plan) => {
+    if (!isAuthenticated) {
+      Alert.alert(t('common.error', language), t('settings.login', language));
+      return;
+    }
+
+    try {
+      const returnUrl = Linking.createURL('/subscriptions/success');
+      const cancelUrl = Linking.createURL('/subscriptions');
+
+      const purchaseData = {
+        customerId: user.id,
+        subscriptionPlanId: plan.id,
+        returnUrl: returnUrl,
+        cancelUrl: cancelUrl,
+      };
+
+      const result = await dispatch(purchaseSubscription(purchaseData)).unwrap();
+
+      if (result?.paypalApprovalUrl) {
+        // Use openAuthSessionAsync so the browser auto-closes when PayPal redirects back
+        const browserResult = await WebBrowser.openAuthSessionAsync(result.paypalApprovalUrl, returnUrl);
+
+        if (browserResult.type === 'success') {
+          // Confirm payment on backend with the PayPal subscription ID
+          try {
+            await dispatch(confirmNewPayment({
+              customerId: user.id,
+              subscriptionPlanId: plan.id,
+              paypalSubscriptionId: result.paypalSubscriptionId,
+            })).unwrap();
+          } catch (confirmError) {
+            console.warn('Payment confirmation warning:', confirmError);
+          }
+
+          Alert.alert('Success', 'Subscription activated successfully!');
+
+          if (user?.id) {
+            dispatch(fetchUserSubscriptions(user.id));
+          }
+        } else {
+          // User closed the browser without completing payment — do nothing
+          console.log('Subscription payment was cancelled or dismissed.');
+        }
+      } else if (result?.subscriptionId) {
+        Alert.alert('Success', 'Subscription activated!');
+      }
+    } catch (error) {
+      Alert.alert('Error', error || 'Failed to initiate purchase');
+    }
+  };
+
+  const PlanButton = ({ item }) => {
+    // Check if this plan is the user's active one
+    const activeSub = userSubscriptions.find(sub =>
+      sub.isActive &&
+      (String(sub.planId) === String(item.id) ||
+        String(sub.planName).toLowerCase() === String(item.name).toLowerCase())
+    );
+
+    // Fallback to user.subscription if userSubscriptions is empty
+    const isActivePlan = !!activeSub || (
+      user?.subscription &&
+      (String(user.subscription.planId) === String(item.id) ||
+        String(user.subscription.name).toLowerCase() === String(item.name).toLowerCase())
+    );
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.subscribeButton,
+          { backgroundColor: isActivePlan ? colors.success + '20' : colors.primary, borderColor: isActivePlan ? colors.success : 'transparent', borderWidth: isActivePlan ? 1 : 0 }
+        ]}
+        onPress={() => !isActivePlan && handleSubscribe(item)}
+        disabled={isActivePlan || purchaseLoading}
+      >
+        {purchaseLoading ? (
+          <ActivityIndicator size="small" color="#FFF" />
+        ) : (
+          <Text style={[styles.buttonText, { color: isActivePlan ? colors.success : '#FFF' }]}>
+            {isActivePlan
+              ? 'Active'
+              : isAuthenticated ? t('subscriptions.choosePlan', language) : t('settings.login', language)}
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const renderPlan = ({ item }) => (
     <View style={[styles.planCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -45,7 +143,7 @@ export default function SubscriptionsScreen() {
         </View>
         <Zap size={24} color={item.isPopular ? colors.primary : colors.textMuted} />
       </View>
-      
+
       <View style={styles.priceContainer}>
         <Text style={[styles.planPrice, { color: colors.text }]}>
           <Text style={styles.currency}>$</Text>
@@ -55,22 +153,12 @@ export default function SubscriptionsScreen() {
           /{item.interval === 1 ? t('subscriptions.monthly', language) : t('subscriptions.yearly', language)}
         </Text>
       </View>
-      
+
       <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
         {item.description || 'Access to premium books and exclusive content.'}
       </Text>
 
-      <TouchableOpacity 
-        style={[
-          styles.subscribeButton, 
-          { backgroundColor: colors.primary }
-        ]}
-        onPress={() => console.log('Subscribe to', item.name)}
-      >
-        <Text style={styles.buttonText}>
-          {isAuthenticated ? t('subscriptions.choosePlan', language) : t('settings.login', language)}
-        </Text>
-      </TouchableOpacity>
+      <PlanButton item={item} />
 
       <View style={styles.featuresList}>
         {(item.features || ['Unlimited Reading', 'Offline Access', 'Exclusive Content']).map((feature, index) => (
@@ -112,8 +200,8 @@ export default function SubscriptionsScreen() {
         {plansError && (
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: colors.error }]}>{plansError}</Text>
-            <TouchableOpacity 
-              style={[styles.retryButton, { backgroundColor: colors.primary + '10' }]} 
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: colors.primary + '10' }]}
               onPress={() => dispatch(fetchSubscriptionPlans())}
             >
               <Text style={[styles.retryText, { color: colors.primary }]}>{t('common.retry', language)}</Text>
@@ -131,15 +219,15 @@ export default function SubscriptionsScreen() {
 
         <View style={styles.faqSection}>
           <Text style={[styles.faqHeader, { color: colors.text }]}>
-            <HelpCircle size={20} color={colors.primary} style={{ marginRight: 8 }} />
+            <HelpCircle size={20} color={colors.primary} style={{ marginRight: 10 }} />
             {t('subscriptions.faqTitle', language)}
           </Text>
-          
+
           <View style={[styles.faqItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.question, { color: colors.text }]}>{t('subscriptions.faq1_q', language)}</Text>
             <Text style={[styles.answer, { color: colors.textSecondary }]}>{t('subscriptions.faq1_a', language)}</Text>
           </View>
-          
+
           <View style={[styles.faqItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.question, { color: colors.text }]}>{t('subscriptions.faq2_q', language)}</Text>
             <Text style={[styles.answer, { color: colors.textSecondary }]}>{t('subscriptions.faq2_a', language)}</Text>

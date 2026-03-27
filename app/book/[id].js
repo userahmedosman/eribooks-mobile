@@ -10,6 +10,8 @@ import {
   Platform,
   TextInput,
   Alert,
+  Modal,
+  SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
@@ -34,6 +36,7 @@ import {
   ChevronUp,
 } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
+import Pdf from 'react-native-pdf';
 import * as WebBrowser from 'expo-web-browser';
 import { addToCart } from '../../src/lib/features/cart/cartSlice';
 import { api } from '../../src/lib/api';
@@ -68,6 +71,7 @@ export default function BookDetailScreen() {
 
   // PDF reader state
   const [showPdfReader, setShowPdfReader] = useState(false);
+  const [isFullScreenPdf, setIsFullScreenPdf] = useState(false);
 
   // Audio chapter player state
   const [playingChapterId, setPlayingChapterId] = useState(null);
@@ -79,6 +83,7 @@ export default function BookDetailScreen() {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [publishedReviews, setPublishedReviews] = useState([]);
 
   // ─── Fetch product data ───
   useEffect(() => {
@@ -96,6 +101,20 @@ export default function BookDetailScreen() {
         }
 
         setProduct(productData);
+
+        // Fetch published reviews for this product
+        try {
+          const revRes = await api.reviews.getPublished();
+          const allReviews = revRes?.data || revRes?.$values || revRes || [];
+          if (Array.isArray(allReviews)) {
+            const productReviews = allReviews.filter(
+              (r) => String(r.productId) === String(id) || String(r.bookId) === String(productData?.book?.id)
+            );
+            setPublishedReviews(productReviews);
+          }
+        } catch (revErr) {
+          console.warn('[BookDetail] Failed to fetch published reviews:', revErr.message);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -221,7 +240,7 @@ export default function BookDetailScreen() {
   const isFree = product.isFree || product.IsFree || Number(product.price) === 0;
   const price = isFree ? (t('product.free', language) || 'Free') : `$${Number(product.price || 0).toFixed(2)}`;
   
-  const reviews = book.reviews || [];
+  const reviews = publishedReviews || [];
   const averageFromReviews = reviews.length > 0
     ? reviews.reduce((acc, r) => acc + (Number(r.rating || r.star || 0)), 0) / reviews.length
     : null;
@@ -298,10 +317,25 @@ export default function BookDetailScreen() {
         BookId: book.id,
         CustomerId: user.id
       });
-      // Refresh product to show new review
+      // Refresh product to show new review if included in product data
       const res = await api.products.getById(id);
       const updatedProduct = res?.data || res?.content || res?.item || res;
       setProduct(Array.isArray(updatedProduct) ? updatedProduct[0] : updatedProduct);
+
+      // Also refresh the published reviews immediately
+      try {
+        const revRes = await api.reviews.getPublished();
+        const allReviews = revRes?.data || revRes?.$values || revRes || [];
+        if (Array.isArray(allReviews)) {
+          const productReviews = allReviews.filter(
+            (r) => String(r.productId) === String(id) || String(r.bookId) === String(updatedProduct?.book?.id)
+          );
+          setPublishedReviews(productReviews);
+        }
+      } catch (revErr) {
+        console.warn('[BookDetail] Failed to refresh published reviews:', revErr.message);
+      }
+
       setNewComment('');
       setNewRating(5);
       setIsAddingReview(false);
@@ -449,18 +483,44 @@ export default function BookDetailScreen() {
               </TouchableOpacity>
 
               {showPdfReader && (
-                <View style={[styles.pdfContainer, { borderColor: colors.border }]}>
-                  <WebView
-                    source={{ uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}` }}
-                    style={styles.pdfWebView}
-                    startInLoadingState
-                    renderLoading={() => (
-                      <View style={[styles.centered, { backgroundColor: colors.background, height: 300 }]}>
-                        <ActivityIndicator color={colors.primary} />
-                        <Text style={[{ color: colors.textSecondary, marginTop: spacing.sm }, typography.bodySmall]}>Loading book...</Text>
-                      </View>
-                    )}
-                  />
+                <View style={[styles.pdfContainer, { borderColor: colors.border, height: 450, overflow: 'hidden' }]}>
+                  {Platform.OS === 'web' ? (
+                    <WebView
+                      source={{ uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}` }}
+                      style={styles.pdfWebView}
+                      startInLoadingState
+                      renderLoading={() => (
+                        <View style={[styles.centered, { backgroundColor: colors.background, height: 300 }]}>
+                          <ActivityIndicator color={colors.primary} />
+                          <Text style={[{ color: colors.textSecondary, marginTop: spacing.sm }, typography.bodySmall]}>Loading preview...</Text>
+                        </View>
+                      )}
+                    />
+                  ) : (
+                    <View style={{ flex: 1 }}>
+                      <Pdf
+                        trustAllCerts={false}
+                        source={{ uri: pdfUrl, cache: true }}
+                        style={{ flex: 1, width: '100%', height: '100%' }}
+                        spacing={0}
+                        renderActivityIndicator={() => (
+                          <View style={[styles.centered, { backgroundColor: colors.background, height: 300 }]}>
+                            <ActivityIndicator color={colors.primary} />
+                            <Text style={[{ color: colors.textSecondary, marginTop: spacing.sm }, typography.bodySmall]}>Loading Book securely...</Text>
+                          </View>
+                        )}
+                        onError={(error) => {
+                          console.log('PDF error:', error);
+                        }}
+                      />
+                      <TouchableOpacity 
+                        style={[styles.fullScreenButton, { backgroundColor: colors.primary }]}
+                        onPress={() => setIsFullScreenPdf(true)}
+                      >
+                        <Text style={styles.fullScreenButtonText}>Read Full Screen</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -632,20 +692,26 @@ export default function BookDetailScreen() {
           {selectedTab === 'description' ? (
             <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
           ) : reviews.length > 0 ? (
-            reviews.map((review, index) => (
-              <View key={index} style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewerInfo}>
-                    <View style={[styles.reviewerAvatar, { backgroundColor: colors.primary + '20' }]}>
-                      <User size={14} color={colors.primary} />
+            reviews.map((review, index) => {
+              const reviewerName = review.customer 
+                ? `${review.customer.firstName || ''} ${review.customer.lastName || ''}`.trim() 
+                : review.reviewerName || 'Anonymous';
+              
+              return (
+                <View key={index} style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={styles.reviewHeader}>
+                    <View style={styles.reviewerInfo}>
+                      <View style={[styles.reviewerAvatar, { backgroundColor: colors.primary + '20' }]}>
+                        <User size={14} color={colors.primary} />
+                      </View>
+                      <Text style={[styles.reviewerName, { color: colors.text }]}>{reviewerName}</Text>
                     </View>
-                    <Text style={[styles.reviewerName, { color: colors.text }]}>{review.reviewerName || 'Anonymous'}</Text>
+                    <RatingStars rating={review.rating || review.star || 0} />
                   </View>
-                  <RatingStars rating={review.rating || review.star || 0} />
+                  <Text style={[styles.reviewText, { color: colors.textSecondary }]}>{review.content || review.comment}</Text>
                 </View>
-                <Text style={[styles.reviewText, { color: colors.textSecondary }]}>{review.content || review.comment}</Text>
-              </View>
-            ))
+              );
+            })
           ) : (
             <View style={styles.noReviewsBox}>
               <Text style={[styles.description, { color: colors.textSecondary, textAlign: 'center' }]}>
@@ -735,6 +801,33 @@ export default function BookDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* ── Full Screen PDF Modal ── */}
+      <Modal visible={isFullScreenPdf} animationType="slide" presentationStyle="fullScreen">
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.fullScreenHeader, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={() => setIsFullScreenPdf(false)} style={styles.closeFullScreenButton}>
+              <X size={24} color={colors.text} />
+              <Text style={[styles.closeFullScreenText, { color: colors.text }]}>Close Book</Text>
+            </TouchableOpacity>
+          </View>
+          <Pdf
+            trustAllCerts={false}
+            source={{ uri: pdfUrl, cache: true }}
+            style={{ flex: 1, width: '100%', height: '100%' }}
+            spacing={0}
+            renderActivityIndicator={() => (
+              <View style={[styles.centered, { backgroundColor: colors.background }]}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={[{ color: colors.textSecondary, marginTop: spacing.sm }, typography.bodySmall]}>Loading Book securely...</Text>
+              </View>
+            )}
+            onError={(error) => {
+              console.log('PDF error:', error);
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -827,6 +920,11 @@ const styles = StyleSheet.create({
   // PDF
   pdfContainer: { borderRadius: borderRadius.lg, overflow: 'hidden', borderWidth: 1 },
   pdfWebView: { height: 480 },
+  fullScreenButton: { position: 'absolute', bottom: 16, right: 16, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, ...shadows.sm },
+  fullScreenButtonText: { ...typography.button, color: '#FFF' },
+  fullScreenHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1 },
+  closeFullScreenButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  closeFullScreenText: { ...typography.label, fontWeight: '700' },
 
   // Audio chapter rows
   chapterRow: {

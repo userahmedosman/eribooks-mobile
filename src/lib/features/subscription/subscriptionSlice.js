@@ -16,7 +16,9 @@ export const fetchUserSubscriptions = createAsyncThunk(
   'subscriptions/fetchUserSubscriptions',
   async (customerId, { rejectWithValue }) => {
     try {
-      return await api.subscriptions.getUserSubscriptions(customerId);
+      const response = await api.subscriptions.getUserSubscriptions(customerId);
+      // Backend returns { value: [...] } — unwrap to always store a flat array
+      return response?.value ?? (Array.isArray(response) ? response : []);
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -29,6 +31,7 @@ export const purchaseSubscription = createAsyncThunk(
     try {
       return await api.subscriptions.purchase(purchaseData);
     } catch (error) {
+      // Preserve errorCode if the backend provides it in the error payload
       return rejectWithValue(error.message);
     }
   }
@@ -67,6 +70,8 @@ const initialState = {
   purchaseLoading: false,
   purchaseError: null,
   purchaseResponse: null,
+  cancelLoading: false,
+  cancelError: null,
 };
 
 const subscriptionSlice = createSlice({
@@ -82,6 +87,7 @@ const subscriptionSlice = createSlice({
       state.plansError = null;
       state.subscriptionsError = null;
       state.purchaseError = null;
+      state.cancelError = null;
     },
   },
   extraReducers: (builder) => {
@@ -99,16 +105,17 @@ const subscriptionSlice = createSlice({
       .addCase(purchaseSubscription.rejected, (state, action) => { state.purchaseLoading = false; state.purchaseError = action.payload; })
 
       .addCase(confirmNewPayment.pending, (state) => { state.purchaseLoading = true; state.purchaseError = null; })
-      .addCase(confirmNewPayment.fulfilled, (state) => {
-        state.purchaseLoading = false;
-      })
+      .addCase(confirmNewPayment.fulfilled, (state) => { state.purchaseLoading = false; })
       .addCase(confirmNewPayment.rejected, (state, action) => { state.purchaseLoading = false; state.purchaseError = action.payload; })
 
+      .addCase(cancelSubscription.pending, (state) => { state.cancelLoading = true; state.cancelError = null; })
       .addCase(cancelSubscription.fulfilled, (state, action) => {
+        state.cancelLoading = false;
         const { subscriptionId } = action.payload;
         const index = state.userSubscriptions.findIndex((s) => s.id === subscriptionId);
         if (index !== -1) state.userSubscriptions[index].isActive = false;
-      });
+      })
+      .addCase(cancelSubscription.rejected, (state, action) => { state.cancelLoading = false; state.cancelError = action.payload; });
   },
 });
 

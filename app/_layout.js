@@ -9,10 +9,14 @@ import { loadUserSettings } from '../src/lib/features/ui/uiSlice';
 import { getColors } from '../src/theme';
 import React, { useEffect } from 'react';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 export default function RootLayout() {
   return (
     <Provider store={store}>
-      <AppWrapper />
+      <SafeAreaProvider>
+        <AppWrapper />
+      </SafeAreaProvider>
     </Provider>
   );
 }
@@ -62,5 +66,3 @@ function AppWrapper() {
     </>
   );
 }
-
-

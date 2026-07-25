@@ -68,7 +68,7 @@ export default function CartScreen() {
   const totalPrice = cartProducts.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={[styles.screenTitle, { color: colors.text }]}>{t('cart.title', language) || 'My Cart'}</Text>
         {cartProducts.length > 0 && (

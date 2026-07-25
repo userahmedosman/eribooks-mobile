@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
+import { useRouter } from 'expo-router';
 import { 
   Trash2, 
   Plus, 
@@ -11,17 +13,21 @@ import {
   ShoppingBasket
 } from 'lucide-react-native';
 import { removeFromCart, deleteItemFromCart, clearCart, addToCart } from '../../src/lib/features/cart/cartSlice';
+import { api } from '../../src/lib/api';
 import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
 import { t } from '../../src/i18n';
 
 export default function CartScreen() {
+  const router = useRouter();
   const dispatch = useDispatch();
   const { cartItems, total } = useSelector((state) => state.cart);
   const products = useSelector((state) => state.product.list);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
 
   const colors = getColors(theme);
   const isDark = theme === 'dark';
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const cartProducts = Object.entries(cartItems).map(([productId, quantity]) => {
     const product = products.find((p) => String(p.id) === productId) || { id: productId };
@@ -67,6 +73,105 @@ export default function CartScreen() {
 
   const totalPrice = cartProducts.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
 
+  const handleCheckout = async () => {
+    if (cartProducts.length === 0) return;
+
+    if (!isAuthenticated) {
+      Alert.alert(
+        t('common.error', language) || 'Sign In Required',
+        'Please sign in to complete your checkout.',
+        [
+          { text: t('forms.cancel', language) || 'Cancel', style: 'cancel' },
+          { text: t('settings.login', language) || 'Sign In', onPress: () => router.push('/auth/login') },
+        ]
+      );
+      return;
+    }
+
+    setCheckoutLoading(true);
+
+    try {
+      // Construct OrderItems with valid BookId > 0 as required by backend validation
+      const orderItems = await Promise.all(
+        cartProducts.map(async (item) => {
+          let bId = Number(item.bookId || item.book?.id || 0);
+          let pId = Number(item.id || 0);
+
+          // If bookId is missing, fetch product details to retrieve bookId
+          if (!bId && pId) {
+            try {
+              const res = await api.products.getById(pId);
+              const fetched = res?.data || res?.content || res?.item || res;
+              if (fetched) {
+                bId = Number(fetched.bookId || fetched.book?.id || pId);
+              }
+            } catch (e) {
+              console.warn('[Checkout] Failed to fetch product details for bookId:', e.message);
+            }
+          }
+
+          // Fallback to pId if bId is still 0
+          if (!bId) bId = pId;
+
+          const qty = Number(item.quantity || 1);
+          const prc = Number(item.price || 0);
+
+          return {
+            bookId: bId,
+            BookId: bId,
+            productId: pId,
+            ProductId: pId,
+            quantity: qty,
+            Quantity: qty,
+            unitPrice: prc,
+            UnitPrice: prc,
+            price: prc,
+            Price: prc,
+          };
+        })
+      );
+
+      const orderPayload = {
+        customerId: Number(user?.id || 0),
+        CustomerId: Number(user?.id || 0),
+        items: orderItems,
+        orderItems: orderItems,
+        OrderItems: orderItems,
+        totalAmount: Number(totalPrice || 0),
+        TotalAmount: Number(totalPrice || 0),
+      };
+
+      console.log('[Checkout] Submitting order payload:', JSON.stringify(orderPayload, null, 2));
+
+      await api.orders.create(orderPayload);
+
+      dispatch(clearCart());
+
+      Alert.alert(
+        'Order Placed 🎉',
+        'Thank you for your order! Your purchase has been processed successfully.',
+        [
+          {
+            text: 'View Profile',
+            onPress: () => router.push('/(tabs)/profile'),
+          },
+          {
+            text: 'Continue Shopping',
+            onPress: () => router.push('/(tabs)'),
+          },
+        ]
+      );
+    } catch (err) {
+      console.error('[Checkout Error]', err);
+      Alert.alert(
+        t('common.error', language) || 'Checkout Error',
+        err.message || 'Failed to process checkout. Please try again.'
+      );
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
@@ -102,9 +207,20 @@ export default function CartScreen() {
               <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>{t('subscriptions.total', language) || 'Total'}</Text>
               <Text style={[styles.totalPrice, { color: colors.text }]}>${totalPrice.toFixed(2)}</Text>
             </View>
-            <TouchableOpacity style={[styles.checkoutButton, { backgroundColor: colors.primary }]}>
-              <Text style={styles.checkoutText}>{t('subscriptions.checkout', language) || 'Proceed to Checkout'}</Text>
-              <ArrowRight size={20} color="#FFF" style={{ marginLeft: 8 }} />
+            <TouchableOpacity
+              style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
+              onPress={handleCheckout}
+              disabled={checkoutLoading}
+              activeOpacity={0.8}
+            >
+              {checkoutLoading ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Text style={styles.checkoutText}>{t('subscriptions.checkout', language) || 'Proceed to Checkout'}</Text>
+                  <ArrowRight size={20} color="#FFF" style={{ marginLeft: 8 }} />
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </>
@@ -204,7 +320,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopWidth: 1,
     padding: spacing.lg,
-    paddingBottom: Platform.OS === 'ios' ? spacing.xl * 1.5 : spacing.xl,
     ...shadows.lg,
   },
   totalRow: {

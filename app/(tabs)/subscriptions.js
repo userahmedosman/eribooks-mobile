@@ -28,6 +28,10 @@ import {
   clearPurchaseState,
   clearErrors,
 } from '../../src/lib/features/subscription/subscriptionSlice';
+import {
+  getSubscriptionExpiryDate,
+  getSubscriptionStatusText,
+} from '../../src/lib/features/subscription/subscriptionUtils';
 import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '../../src/i18n';
@@ -64,6 +68,7 @@ export default function SubscriptionsScreen() {
     purchaseError,
     cancelLoading,
     cancelError,
+    lastAutoCancelledExpired,
   } = useSelector((state) => state.subscriptions);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { theme, language } = useSelector((state) => state.ui || { theme: 'dark', language: 'en' });
@@ -239,6 +244,17 @@ export default function SubscriptionsScreen() {
         })
       : null;
 
+    const expiryDateObj = getSubscriptionExpiryDate(activeSubscription, plans);
+    const expiryDateStr = expiryDateObj
+      ? expiryDateObj.toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })
+      : null;
+
+    const statusText = getSubscriptionStatusText(activeSubscription, plans);
+
     return (
       <View style={[styles.activeBanner, { backgroundColor: colors.success + '15', borderColor: colors.success + '40' }]}>
         <View style={styles.bannerRow}>
@@ -249,14 +265,18 @@ export default function SubscriptionsScreen() {
             <Text style={[styles.bannerTitle, { color: colors.success }]}>
               Active Plan: {activeSubscription.planName}
             </Text>
-            {startDate && (
-              <View style={styles.bannerDateRow}>
-                <Calendar size={12} color={colors.textMuted} style={{ marginRight: 4 }} />
-                <Text style={[styles.bannerDate, { color: colors.textMuted }]}>
+            <View style={styles.bannerDateRow}>
+              {startDate && (
+                <Text style={[styles.bannerDate, { color: colors.textMuted, marginRight: 8 }]}>
                   Since {startDate}
                 </Text>
-              </View>
-            )}
+              )}
+              {expiryDateStr && (
+                <Text style={[styles.bannerDate, { color: colors.primary, fontWeight: '700' }]}>
+                  • Expires: {expiryDateStr} ({statusText})
+                </Text>
+              )}
+            </View>
           </View>
         </View>
 
@@ -384,6 +404,16 @@ export default function SubscriptionsScreen() {
           </View>
         )}
 
+        {/* Notice if a subscription was auto-cancelled because duration was exceeded */}
+        {lastAutoCancelledExpired && !activeSubscription && (
+          <View style={[styles.expiredNoticeBox, { backgroundColor: colors.warning + '15', borderColor: colors.warning + '40' }]}>
+            <AlertCircle size={18} color={colors.warning || colors.primary} style={{ marginRight: 8 }} />
+            <Text style={[styles.expiredNoticeText, { color: colors.text }]}>
+              Your previous subscription exceeded its plan duration and was automatically cancelled. You can choose any plan below to resubscribe.
+            </Text>
+          </View>
+        )}
+
         {/* Active subscription banner */}
         <View style={styles.bannerContainer}>
           <ActivePlanBanner />
@@ -452,6 +482,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   purchaseErrorText: { ...typography.bodySmall, flex: 1, lineHeight: 18 },
+
+  // Expired notice box
+  expiredNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  expiredNoticeText: { ...typography.bodySmall, flex: 1, lineHeight: 18 },
 
   // Active plan banner
   bannerContainer: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },

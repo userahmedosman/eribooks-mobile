@@ -21,9 +21,11 @@ export default function RootLayout() {
   );
 }
 
+import { fetchSubscriptionPlans, fetchUserSubscriptions } from '../src/lib/features/subscription/subscriptionSlice';
+
 function AppWrapper() {
   const dispatch = useDispatch();
-  const { isInitialized } = useSelector((state) => state.auth);
+  const { isInitialized, isAuthenticated, user } = useSelector((state) => state.auth);
   const { theme } = useSelector((state) => state.ui || { theme: 'dark' });
   const colors = getColors(theme);
 
@@ -31,6 +33,13 @@ function AppWrapper() {
     dispatch(loadUserSettings());
     dispatch(checkAuth({ force: false }));
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      dispatch(fetchSubscriptionPlans());
+      dispatch(fetchUserSubscriptions(user.id));
+    }
+  }, [dispatch, isAuthenticated, user?.id]);
 
   if (!isInitialized) return null; // Or a splash screen
 

@@ -83,6 +83,14 @@ export const logoutUser = createAsyncThunk(
     // Optimistically clear local state immediately so UI updates instantly
     dispatch(logout());
     try {
+      // Clear native Google Sign-In session if available
+      try {
+        const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore if on web or not signed in
+      }
+
       // Fire and forget the server logout notification
       await api.auth.logout();
     } catch (error) {

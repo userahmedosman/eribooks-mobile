@@ -38,6 +38,9 @@ export default function LoginScreen() {
     clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
     responseType: ResponseType.IdToken,
     scopes: ['openid', 'profile', 'email'],
+    extraParams: {
+      prompt: 'select_account',
+    },
     redirectUri: Platform.select({
       web: undefined, // defaults to window.location.origin
       native: AuthSession.makeRedirectUri({ scheme: 'eribooks' }),
@@ -91,16 +94,25 @@ export default function LoginScreen() {
       router.replace('/(tabs)/profile');
     }
   }, [isAuthenticated]);
+
   const handleGoogleLogin = async () => {
     if (Platform.OS === 'web') {
-      promptAsync();
+      promptAsync({ prompt: 'select_account' });
       return;
     }
 
     // Native flow (since we are now in a Dev Client)
     try {
-      const { GoogleSignin, statusCodes } = require('@react-native-google-signin/google-signin');
+      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
       await GoogleSignin.hasPlayServices();
+      
+      // Sign out prior session to force Google account chooser modal every time
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        // Ignore if user wasn't signed in natively
+      }
+
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken || userInfo.idToken;
 
@@ -116,7 +128,7 @@ export default function LoginScreen() {
         console.error('[Native] Error Code:', error.code);
       }
       // Fallback to browser flow if native fails for some reason
-      promptAsync();
+      promptAsync({ prompt: 'select_account' });
     }
   };
 

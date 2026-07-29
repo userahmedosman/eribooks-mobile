@@ -13,7 +13,6 @@
   "navigation": {
     "home": "ዋና",
     "search": "ድለይ",
-    "cart": "መኽዘን",
     "subscriptions": "ምዝገባ",
     "settings": "ቅጥታት",
     "profile": "መገለጺ",
@@ -24,7 +23,6 @@
     "subtitle": "ዝደለኻዮ ዓይነት መጽሓፍ ዳህስስ",
     "featured": "ምሩጻት",
     "trending": "ሕጂ ዘለዉ",
-    "buy": "ዓድግ",
     "empty": "መጽሓፍ ኣይተረኽበን",
     "emptySubtitle": "ንደሓር ተመለስ"
   },
@@ -39,17 +37,7 @@
     "noResults": "ዝተረኽበ የለን ን",
     "initial": "ዝደለኻዮ ዓይነት መጽሓፍ ዳህስስ"
   },
-  "cart": {
-    "title": "መኽዘን",
-    "total": "ጠቅላላ",
-    "checkout": "ክፍሊት ፈጽም",
-    "empty": "ዘምቢልካ ጥርሑ 'ዩ ዘሎ",
-    "emptySubtitle": "መጻሕፍቲ መሪጽካ ናብ መኽዘን ኣእቱ",
-    "clearAll": "ኩሉ ሰርዝ"
-  },
   "product": {
-    "addToCart": "ናብ ዘምቢል ኣእቱ",
-    "buyNow": "ሕጂ ዓድግ",
     "description": "መግለጺ",
     "reviews": "ርኢቶታት",
     "by": "ብ",
@@ -92,7 +80,6 @@
   "profile": {
     "library": "ቤተ-መጻሕፍተይ",
     "myBooks": "መጻሕፍተይ",
-    "orders": "ታሪኽ ትእዛዛት",
     "accountSettings": "ቅጥታት ሕሳብ",
     "editProfile": "መገለጺ ኣመሓይሽ",
     "proMember": "ምሩጽ ኣባል"

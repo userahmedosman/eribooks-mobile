@@ -95,7 +95,7 @@ export default function HomeScreen() {
     const title = item?.book?.title || item?.title || 'Untitled';
     const authors = item?.book?.authors?.map((a) => a.name).join(', ') || item?.author || '';
     const isFree = item?.isFree || item?.IsFree || Number(item?.price) === 0;
-    const priceLabel = isFree ? 'Free' : `$${Number(item?.price || 0).toFixed(2)}`;
+    const accessTag = isFree ? 'Free' : 'Subscription';
     const typeConf = TYPE_CONFIG[item?.productType] || TYPE_CONFIG[1];
     const TypeIcon = typeConf.icon;
 
@@ -139,7 +139,7 @@ export default function HomeScreen() {
             {authors || 'EriBooks Author'}
           </Text>
           <Text style={[styles.productPrice, { color: isFree ? colors.success : colors.primary }]}>
-            {priceLabel}
+            {accessTag}
           </Text>
         </View>
       </TouchableOpacity>

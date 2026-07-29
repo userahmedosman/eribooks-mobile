@@ -7,7 +7,6 @@ import {
   Home, 
   Search, 
   Star, 
-  ShoppingCart, 
   Newspaper,
   Settings as SettingsIcon 
 } from 'lucide-react-native';
@@ -107,20 +106,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="cart"
-        options={{
-          tabBarIcon: ({ focused, color }) => (
-            <TabIcon 
-              icon={ShoppingCart} 
-              focused={focused} 
-              color={color} 
-              label={t('navigation.cart', language)} 
-              themeColors={colors} 
-            />
-          ),
-        }}
-      />
+
       <Tabs.Screen
         name="news"
         options={{

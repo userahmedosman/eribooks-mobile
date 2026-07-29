@@ -13,7 +13,6 @@
   "navigation": {
     "home": "Home",
     "search": "Search",
-    "cart": "Cart",
     "subscriptions": "Plans",
     "settings": "Settings",
     "profile": "Profile",
@@ -24,7 +23,6 @@
     "subtitle": "Discover your next story",
     "featured": "Featured",
     "trending": "Trending Now",
-    "buy": "Buy",
     "empty": "No books found",
     "emptySubtitle": "Check back later for more amazing books."
   },
@@ -39,17 +37,7 @@
     "noResults": "No results found for",
     "initial": "Search for your next favorite book"
   },
-  "cart": {
-    "title": "My Cart",
-    "total": "Total",
-    "checkout": "Proceed to Checkout",
-    "empty": "Your cart is empty",
-    "emptySubtitle": "Browse books and add them to your cart",
-    "clearAll": "Clear All"
-  },
   "product": {
-    "addToCart": "Add to Cart",
-    "buyNow": "Buy Now",
     "description": "Description",
     "reviews": "Reviews",
     "by": "by",
@@ -92,7 +80,6 @@
   "profile": {
     "library": "My Library",
     "myBooks": "My Books",
-    "orders": "Order History",
     "accountSettings": "Account Settings",
     "editProfile": "Edit Profile",
     "proMember": "PRO MEMBER"

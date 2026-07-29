@@ -13,7 +13,6 @@
   "navigation": {
     "home": "الرئيسية",
     "search": "بحث",
-    "cart": "السلة",
     "subscriptions": "الخطط",
     "settings": "الإعدادات",
     "profile": "الحساب",
@@ -24,7 +23,6 @@
     "subtitle": "اكتشف قصتك القادمة",
     "featured": "مميز",
     "trending": "رائج الآن",
-    "buy": "شراء",
     "empty": "لا يوجد كتب",
     "emptySubtitle": "تحقق لاحقاً لمزيد من الكتب."
   },
@@ -39,17 +37,7 @@
     "noResults": "لا توجد نتائج لـ",
     "initial": "ابحث عن كتابك المفضل التالي"
   },
-  "cart": {
-    "title": "سلة المشتريات",
-    "total": "الإجمالي",
-    "checkout": "إتمام الشراء",
-    "empty": "سلتك فارغة",
-    "emptySubtitle": "تصفح الكتب وأضفها إلى السلة",
-    "clearAll": "مسح الكل"
-  },
   "product": {
-    "addToCart": "أضف إلى السلة",
-    "buyNow": "شراء الآن",
     "description": "الوصف",
     "reviews": "المراجعات",
     "by": "بواسطة",
@@ -92,7 +80,6 @@
   "profile": {
     "library": "مكتبتي",
     "myBooks": "كتبي",
-    "orders": "سجل الطلبات",
     "accountSettings": "إعدادات الحساب",
     "editProfile": "تعديل الملف الشخصي",
     "proMember": "عضو محترف"

@@ -58,7 +58,8 @@ export default function SearchScreen() {
     const imageUrl = getImageUrl(item);
     const title = item?.book?.title || item?.title || 'Untitled';
     const authors = item?.book?.authors?.map((a) => a.name).join(', ') || '';
-    const price = item?.price != null ? `$${item.price.toFixed(2)}` : 'Free';
+    const isFree = item?.isFree || item?.IsFree || Number(item?.price) === 0;
+    const accessTag = isFree ? 'Free' : 'Subscription';
 
     return (
       <TouchableOpacity
@@ -78,7 +79,7 @@ export default function SearchScreen() {
         <View style={styles.resultInfo}>
           <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={2}>{title}</Text>
           <Text style={[styles.resultAuthor, { color: colors.textSecondary }]} numberOfLines={1}>{authors || 'EriBooks Author'}</Text>
-          <Text style={[styles.resultPrice, { color: colors.primary }]}>{price}</Text>
+          <Text style={[styles.resultPrice, { color: isFree ? colors.success : colors.primary }]}>{accessTag}</Text>
         </View>
       </TouchableOpacity>
     );

@@ -14,7 +14,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import {
   User,
   Book,
-  Package,
   Star,
   Edit3,
   Globe,
@@ -85,7 +84,7 @@ export default function ProfileScreen() {
             </View>
             <Text style={[styles.notSignedTitle, { color: '#FFF' }]}>{t('navigation.profile', language) || 'Your Profile'}</Text>
             <Text style={[styles.notSignedSubtext, { color: 'rgba(255,255,255,0.7)' }]}>
-              Sign in to track your reading progress, access purchases, and manage subscriptions.
+              Sign in to track your reading progress and manage your subscriptions.
             </Text>
 
             <TouchableOpacity
@@ -131,14 +130,6 @@ export default function ProfileScreen() {
               <Book size={20} color={colors.primary} />
             </View>
             <Text style={[styles.menuText, { color: colors.text }]}>{t('profile.myBooks', language)}</Text>
-            <ChevronRight size={20} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.menuIconBox, { backgroundColor: colors.surfaceLight }]}>
-              <Package size={20} color={colors.primary} />
-            </View>
-            <Text style={[styles.menuText, { color: colors.text }]}>{t('profile.orders', language)}</Text>
             <ChevronRight size={20} color={colors.textMuted} />
           </TouchableOpacity>
 

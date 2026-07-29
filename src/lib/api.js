@@ -319,13 +319,6 @@ export const api = {
     getContent: (id) =>
       customFetch(`${API_URL}/api/products/${id}/content`).then(handleResponse),
   },
-  orders: {
-    create: (data) =>
-      customFetch(`${API_URL}/api/orders`, { method: 'POST', body: JSON.stringify(data) }).then(handleResponse),
-    getById: (id) => customFetch(`${API_URL}/api/orders/${id}`).then(handleResponse),
-    getMyOrders: () => customFetch(`${API_URL}/api/orders/my-orders`).then(handleResponse),
-    getMyPurchases: () => customFetch(`${API_URL}/api/orders/my-purchases`).then(handleResponse),
-  },
   subscriptions: {
     getPlans: () => customFetch(`${API_URL}/api/subscription-plans`).then(handleResponse),
     getPlan: (id) => customFetch(`${API_URL}/api/subscription-plans/${id}`).then(handleResponse),

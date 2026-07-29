@@ -19,7 +19,6 @@ import {
   Star, 
   StarHalf, 
   ArrowLeft, 
-  ShoppingBag, 
   BookOpen, 
   User, 
   FileText,
@@ -38,7 +37,6 @@ import {
 import { WebView } from 'react-native-webview';
 import Pdf from 'react-native-pdf';
 import * as WebBrowser from 'expo-web-browser';
-import { addToCart } from '../../src/lib/features/cart/cartSlice';
 import { api } from '../../src/lib/api';
 import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
 import { t } from '../../src/i18n';
@@ -263,7 +261,7 @@ export default function BookDetailScreen() {
 
   // Access badge label
   const accessBadgeLabel = accessStatus.hasAccess
-    ? (accessStatus.hasSubscription ? 'Subscription Active' : isFree ? 'Free' : 'Owned')
+    ? (accessStatus.hasSubscription ? 'Subscription Active' : isFree ? 'Free' : 'Unlocked')
     : null;
 
   const showUpgradePrompt = isAuthenticated && !accessStatus.hasAccess && accessStatus.accessMessage;
@@ -297,13 +295,6 @@ export default function BookDetailScreen() {
     } else {
       setShowPdfReader(!showPdfReader);
     }
-  };
-
-  const handleAddToCart = () => dispatch(addToCart({ productId: String(product.id) }));
-  const handleBuyNow = () => {
-    if (!isAuthenticated) { router.push('/auth/login'); return; }
-    dispatch(addToCart({ productId: String(product.id) }));
-    router.push('/cart');
   };
 
   const handleSubmitReview = async () => {
@@ -407,9 +398,16 @@ export default function BookDetailScreen() {
             )}
           </View>
 
-          {/* ── Price (hide when owned) ── */}
+          {/* ── Access requirement tag / Free price tag ── */}
           {!accessStatus.hasAccess && (
-            <Text style={[styles.price, { color: isFree ? colors.success : colors.text }]}>{price}</Text>
+            isFree ? (
+              <Text style={[styles.price, { color: colors.success }]}>{price}</Text>
+            ) : (
+              <View style={[styles.badge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30', alignSelf: 'flex-start', marginBottom: spacing.md, paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.full, flexDirection: 'row', alignItems: 'center' }]}>
+                <Crown size={14} color={colors.primary} style={{ marginRight: 6 }} />
+                <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>Subscription Required</Text>
+              </View>
+            )
           )}
 
           {/* ── Format Details ── */}
@@ -779,24 +777,16 @@ export default function BookDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* ── Bottom Action Bar (hidden when owned) ── */}
-      {!accessStatus.hasAccess && (
+      {/* ── Bottom Action Bar (shown when user doesn't have subscription access) ── */}
+      {!accessStatus.hasAccess && !isFree && (
         <View style={[styles.actionBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-          <TouchableOpacity style={[styles.addToCartButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleAddToCart}>
-            <ShoppingBag size={20} color={colors.text} />
-          </TouchableOpacity>
-          {isAuthenticated && (
-            <TouchableOpacity style={[styles.subscribeButton, { backgroundColor: colors.primary }]} onPress={() => router.push('/(tabs)/subscriptions')}>
-              <Crown size={16} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.actionButtonText}>View Plans</Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
-            style={[styles.buyNowButton, { backgroundColor: isAuthenticated ? colors.surface : colors.primary, borderColor: colors.border, borderWidth: isAuthenticated ? 1.5 : 0 }]}
-            onPress={handleBuyNow}
+            style={[styles.subscribeButton, { backgroundColor: colors.primary, flex: 1, paddingVertical: spacing.md, borderRadius: borderRadius.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
+            onPress={() => router.push('/(tabs)/subscriptions')}
           >
-            <Text style={[styles.actionButtonText, { color: isAuthenticated ? colors.text : '#FFF' }]}>
-              {t('product.buyNow', language) || 'Buy Now'}
+            <Crown size={18} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.actionButtonText, { color: '#FFF', fontSize: 16, fontWeight: '700' }]}>
+              View Subscription Plans
             </Text>
           </TouchableOpacity>
         </View>
@@ -973,9 +963,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', borderTopWidth: 1,
     padding: spacing.md, paddingBottom: spacing.xl, gap: spacing.sm,
   },
-  addToCartButton: { width: 52, borderWidth: 1.5, borderRadius: borderRadius.lg, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
+  addToCartButton: { display: 'none' },
   subscribeButton: { flex: 1, flexDirection: 'row', borderRadius: borderRadius.lg, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
-  buyNowButton: { flex: 1, borderRadius: borderRadius.lg, paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' },
+  buyNowButton: { display: 'none' },
   actionButtonText: { ...typography.button, color: '#FFF' },
   
   // Reviews

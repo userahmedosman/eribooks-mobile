@@ -8,6 +8,7 @@ import {
   Alert,
   Switch,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -139,14 +140,29 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={[styles.loginPromo, { backgroundColor: colors.primary }]}
+            style={[styles.loginPromo, { backgroundColor: colors.surface, borderColor: colors.borderGold, borderWidth: 1 }]}
             onPress={() => router.push('/auth/login')}
+            activeOpacity={0.85}
           >
-            <View style={styles.loginPromoInfo}>
-              <Text style={styles.loginPromoTitle}>{t('settings.login', language)}</Text>
-              <Text style={styles.loginPromoDesc}>{t('settings.loginPromo', language) || 'Sign in to sync your library across devices'}</Text>
+            <View style={[styles.loginPromoLogoWrapper, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+              <Image 
+                source={require('../../assets/eri_books_logo.png')} 
+                style={styles.promoLogo} 
+                resizeMode="contain" 
+              />
             </View>
-            <ChevronRight size={24} color="#FFF" />
+            <View style={styles.loginPromoInfo}>
+              <View style={styles.promoHeaderRow}>
+                <Text style={[styles.loginPromoTitle, { color: colors.text }]}>{t('settings.login', language)}</Text>
+                <View style={[styles.promoBadge, { backgroundColor: colors.goldGlow, borderColor: colors.gold }]}>
+                  <Text style={[styles.promoBadgeText, { color: colors.gold }]}>CLOUD SYNC</Text>
+                </View>
+              </View>
+              <Text style={[styles.loginPromoDesc, { color: colors.textSecondary }]}>
+                {t('settings.loginPromo', language) || 'Sign in to sync your library across devices'}
+              </Text>
+            </View>
+            <ChevronRight size={20} color={colors.gold} />
           </TouchableOpacity>
         )}
 
@@ -208,8 +224,19 @@ export default function SettingsScreen() {
         )}
 
         <View style={styles.footer}>
+          <View style={[styles.footerLogoContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Image 
+              source={require('../../assets/eri_books_logo.png')} 
+              style={styles.footerLogo} 
+              resizeMode="contain" 
+            />
+          </View>
+          <View style={styles.footerTitleRow}>
+            <Text style={[styles.footerBrand, { color: colors.text }]}>EriBooks</Text>
+            <View style={[styles.footerGoldDot, { backgroundColor: colors.gold }]} />
+          </View>
           <Text style={[styles.versionText, { color: colors.textMuted }]}>
-            {t('settings.version', language)} 1.1.0
+            {t('settings.version', language)} 1.1.0 • Modern Mobile Edition
           </Text>
         </View>
       </ScrollView>
@@ -357,9 +384,72 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: spacing.xxl,
     alignItems: 'center',
+    paddingBottom: spacing.lg,
+  },
+  footerLogoContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+    marginBottom: spacing.xs,
+    ...shadows.sm,
+  },
+  footerLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  footerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  footerBrand: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  footerGoldDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginLeft: 3,
   },
   versionText: {
     ...typography.caption,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  loginPromoLogoWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+    padding: 4,
+  },
+  promoLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  promoHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  promoBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  promoBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

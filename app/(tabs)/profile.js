@@ -6,6 +6,7 @@ import {
   ScrollView,
   Alert,
   ImageBackground,
+  Image,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -77,21 +78,29 @@ export default function ProfileScreen() {
         source={{ uri: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=2000&auto=format&fit=crop' }}
         style={styles.backgroundImage}
       >
-        <SafeAreaView style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
+        <SafeAreaView style={[styles.overlay, { backgroundColor: 'rgba(11, 13, 23, 0.88)' }]}>
           <View style={styles.centered}>
-            <View style={[styles.iconContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <User size={56} color={colors.primary} />
+            <View style={[styles.iconContainer, { backgroundColor: colors.surface, borderColor: colors.borderGold, borderWidth: 1.5, padding: 8 }]}>
+              <Image 
+                source={require('../../assets/eri_books_logo.png')} 
+                style={styles.profileLogo} 
+                resizeMode="contain" 
+              />
             </View>
-            <Text style={[styles.notSignedTitle, { color: '#FFF' }]}>{t('navigation.profile', language) || 'Your Profile'}</Text>
+            <View style={styles.titleRow}>
+              <Text style={[styles.notSignedTitle, { color: '#FFF' }]}>EriBooks Profile</Text>
+              <View style={[styles.goldDot, { backgroundColor: colors.gold }]} />
+            </View>
             <Text style={[styles.notSignedSubtext, { color: 'rgba(255,255,255,0.7)' }]}>
-              Sign in to track your reading progress and manage your subscriptions.
+              Sign in to sync your library, track reading progress, and access premium subscriptions.
             </Text>
 
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: colors.primary }]}
               onPress={() => router.push('/auth/login')}
+              activeOpacity={0.85}
             >
-              <Text style={styles.primaryButtonText}>{t('settings.login', language) || 'Sign In / Join'}</Text>
+              <Text style={styles.primaryButtonText}>{t('settings.login', language) || 'Sign In / Join EriBooks'}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -205,13 +214,28 @@ const styles = StyleSheet.create({
     padding: spacing.xxl,
   },
   iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 96,
+    height: 96,
+    borderRadius: 28,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
+    ...shadows.lg,
+  },
+  profileLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  goldDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginLeft: 4,
   },
   notSignedTitle: {
     ...typography.h1,
@@ -220,9 +244,9 @@ const styles = StyleSheet.create({
   notSignedSubtext: {
     ...typography.body,
     textAlign: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.xxl,
-    lineHeight: 24,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xl,
+    lineHeight: 22,
   },
   primaryButton: {
     paddingHorizontal: spacing.xxl,

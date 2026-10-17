@@ -341,9 +341,9 @@ export default function BookDetailScreen() {
     const stars = [];
     const floor = Math.floor(rating);
     for (let i = 1; i <= 5; i++) {
-      if (i <= floor) stars.push(<Star key={i} size={14} color={colors.warning} fill={colors.warning} />);
-      else if (i === floor + 1 && rating % 1 >= 0.5) stars.push(<StarHalf key={i} size={14} color={colors.warning} fill={colors.warning} />);
-      else stars.push(<Star key={i} size={14} color={colors.border} />);
+      if (i <= floor) stars.push(<Star key={i} size={15} color={colors.gold} fill={colors.gold} />);
+      else if (i === floor + 1 && rating % 1 >= 0.5) stars.push(<StarHalf key={i} size={15} color={colors.gold} fill={colors.gold} />);
+      else stars.push(<Star key={i} size={15} color={colors.border} />);
     }
     return <View style={styles.starsRow}>{stars}</View>;
   };
@@ -403,9 +403,9 @@ export default function BookDetailScreen() {
             isFree ? (
               <Text style={[styles.price, { color: colors.success }]}>{price}</Text>
             ) : (
-              <View style={[styles.badge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30', alignSelf: 'flex-start', marginBottom: spacing.md, paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.full, flexDirection: 'row', alignItems: 'center' }]}>
-                <Crown size={14} color={colors.primary} style={{ marginRight: 6 }} />
-                <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>Subscription Required</Text>
+              <View style={[styles.badge, { backgroundColor: colors.goldGlow, borderColor: colors.gold, alignSelf: 'flex-start', marginBottom: spacing.md, paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.full, flexDirection: 'row', alignItems: 'center', borderWidth: 1 }]}>
+                <Crown size={14} color={colors.gold} style={{ marginRight: 6 }} />
+                <Text style={{ color: colors.gold, fontSize: 13, fontWeight: '700' }}>Subscription Required</Text>
               </View>
             )
           )}

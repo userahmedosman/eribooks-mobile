@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ImageBackground,
+  Image,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -12,11 +13,11 @@ import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   X,
-  BookOpen,
   Chrome,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
 } from 'lucide-react-native';
-import { getColors, spacing, borderRadius, typography } from '../../src/theme';
+import { getColors, spacing, borderRadius, typography, shadows } from '../../src/theme';
 import { t } from '../../src/i18n';
 import { loginWithGoogle, resetError } from '../../src/lib/features/auth/authSlice';
 import * as Google from 'expo-auth-session/providers/google';
@@ -53,7 +54,7 @@ export default function LoginScreen() {
       try {
         const { GoogleSignin } = require('@react-native-google-signin/google-signin');
         GoogleSignin.configure({
-          webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID, // Use the same client ID
+          webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
           offlineAccess: true,
         });
       } catch (e) {
@@ -101,12 +102,11 @@ export default function LoginScreen() {
       return;
     }
 
-    // Native flow (since we are now in a Dev Client)
+    // Native flow
     try {
       const { GoogleSignin } = require('@react-native-google-signin/google-signin');
       await GoogleSignin.hasPlayServices();
       
-      // Sign out prior session to force Google account chooser modal every time
       try {
         await GoogleSignin.signOut();
       } catch (signOutError) {
@@ -127,7 +127,7 @@ export default function LoginScreen() {
       if (error.code) {
         console.error('[Native] Error Code:', error.code);
       }
-      // Fallback to browser flow if native fails for some reason
+      // Fallback to browser flow
       promptAsync({ prompt: 'select_account' });
     }
   };
@@ -146,56 +146,88 @@ export default function LoginScreen() {
         source={{ uri: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop' }}
         style={styles.backgroundImage}
       >
-        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
+        <View style={[styles.overlay, { backgroundColor: 'rgba(11, 13, 23, 0.88)' }]}>
           {/* Close Button */}
           <TouchableOpacity
             style={[styles.closeButton, { backgroundColor: colors.white10 }]}
             onPress={handleClose}
+            accessibilityLabel="Close"
           >
             <X size={20} color="#FFF" />
           </TouchableOpacity>
 
           <View style={styles.content}>
+            {/* Header Brand Section */}
             <View style={styles.headerContainer}>
-              <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40' }]}>
-                <BookOpen size={48} color={colors.primary} />
+              <View style={[styles.logoContainer, { borderColor: colors.borderGold, backgroundColor: colors.surface }]}>
+                <Image 
+                  source={require('../../assets/eri_books_logo.png')} 
+                  style={styles.logoImage} 
+                  resizeMode="contain" 
+                />
               </View>
-              <Text style={[styles.title, { color: '#FFF' }]}>EriBooks</Text>
-              <Text style={[styles.subtitle, { color: 'rgba(255,255,255,0.7)' }]}>
-                {t('home.subtitle', language)}
+              
+              <View style={styles.titleRow}>
+                <Text style={styles.title}>EriBooks</Text>
+                <View style={[styles.goldDot, { backgroundColor: colors.gold }]} />
+              </View>
+              
+              <Text style={styles.subtitle}>
+                {t('home.subtitle', language) || 'Your Gateway to Eritrean & Global Literature'}
               </Text>
             </View>
 
-            <View style={[styles.card, { backgroundColor: colors.surface + 'CC', borderColor: colors.border }]}>
-              <Text style={[styles.welcomeText, { color: '#FFF' }]}>{t('settings.login', language)}</Text>
-              <Text style={[styles.signInText, { color: 'rgba(255,255,255,0.6)' }]}>{t('auth.signInDesc', language) || 'Sign in to access your library'}</Text>
+            {/* Login Glass Card */}
+            <View style={[styles.card, { backgroundColor: colors.surface + 'EE', borderColor: colors.borderLight }]}>
+              <View style={styles.cardHeader}>
+                <Text style={[styles.welcomeText, { color: colors.text }]}>
+                  {t('settings.login', language) || 'Welcome to EriBooks'}
+                </Text>
+                <Text style={[styles.signInText, { color: colors.textSecondary }]}>
+                  {t('auth.signInDesc', language) || 'Sign in with your Google account to sync your library, bookmarks, and audiobooks.'}
+                </Text>
+              </View>
 
               {error && (
-                <View style={[styles.errorContainer, { backgroundColor: colors.error + '20', borderColor: colors.error + '40' }]}>
+                <View style={[styles.errorContainer, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: colors.error }]}>
                   <AlertCircle size={16} color={colors.error} style={{ marginRight: 8 }} />
                   <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                 </View>
               )}
 
               <TouchableOpacity
-                style={[styles.googleButton, { backgroundColor: '#FFF' }, loading && styles.googleButtonDisabled]}
+                style={[
+                  styles.googleButton,
+                  { backgroundColor: '#FFFFFF' },
+                  loading && styles.googleButtonDisabled,
+                ]}
                 onPress={handleGoogleLogin}
                 disabled={loading}
+                activeOpacity={0.85}
               >
                 {loading ? (
-                  <ActivityIndicator color="#000" />
+                  <ActivityIndicator color="#0F172A" />
                 ) : (
                   <>
                     <View style={styles.googleIconWrapper}>
-                      <Chrome size={20} color="#000" />
+                      <Chrome size={22} color="#0F172A" />
                     </View>
-                    <Text style={[styles.googleButtonText, { color: '#000' }]}>{t('auth.google', language) || 'Continue with Google'}</Text>
+                    <Text style={styles.googleButtonText}>
+                      {t('auth.google', language) || 'Continue with Google'}
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
 
-              <Text style={[styles.termsText, { color: 'rgba(255,255,255,0.5)' }]}>
-                {t('auth.termsPrompt', language) || 'By signing in, you agree to our Terms of Service and Privacy Policy.'}
+              <View style={styles.securityRow}>
+                <ShieldCheck size={14} color={colors.gold} style={{ marginRight: 6 }} />
+                <Text style={[styles.securityText, { color: colors.textMuted }]}>
+                  Secure authentication & cloud sync
+                </Text>
+              </View>
+
+              <Text style={[styles.termsText, { color: colors.textMuted }]}>
+                {t('auth.termsPrompt', language) || 'By continuing, you agree to our Terms of Service & Privacy Policy.'}
               </Text>
             </View>
           </View>
@@ -216,85 +248,101 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 15, 26, 0.75)',
     justifyContent: 'center',
     padding: spacing.lg,
   },
   closeButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
+    top: Platform.OS === 'ios' ? 56 : 36,
     right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
-  closeText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing.xl,
   },
   headerContainer: {
     alignItems: 'center',
-    marginTop: spacing.xxl * 2,
+    marginTop: spacing.xxl + 10,
   },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 30,
+  logoContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    marginBottom: spacing.md,
+    borderWidth: 1.5,
+    padding: 10,
+    ...shadows.lg,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 42,
+    fontSize: 34,
     fontWeight: '800',
-    letterSpacing: -1,
-    marginBottom: spacing.xs,
+    letterSpacing: -0.8,
+    color: '#FFF',
+  },
+  goldDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginLeft: 5,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '500',
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: spacing.lg,
   },
   card: {
-    backgroundColor: 'rgba(26, 26, 46, 0.85)',
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
+    ...shadows.lg,
+  },
+  cardHeader: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   welcomeText: {
-    ...typography.h2,
+    fontSize: 20,
+    fontWeight: '700',
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   signInText: {
-    ...typography.body,
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: 'center',
-    marginBottom: spacing.xl,
   },
   errorContainer: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   errorText: {
-    ...typography.bodySmall,
-    textAlign: 'center',
+    fontSize: 13,
+    flex: 1,
   },
   googleButton: {
     flexDirection: 'row',
@@ -303,24 +351,34 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    height: 56,
+    height: 54,
+    ...shadows.md,
   },
   googleButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.65,
   },
   googleIconWrapper: {
     marginRight: spacing.md,
   },
   googleButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0F0F1A',
+    color: '#0F172A',
+  },
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.md,
+  },
+  securityText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   termsText: {
-    ...typography.caption,
+    fontSize: 11,
     textAlign: 'center',
-    marginTop: spacing.xl,
-    lineHeight: 18,
+    marginTop: spacing.md,
+    lineHeight: 16,
   },
 });
-

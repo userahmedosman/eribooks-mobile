@@ -323,9 +323,13 @@ export default function SubscriptionsScreen() {
           styles.planCard,
           {
             backgroundColor: colors.surface,
-            borderColor: isThisPlanActive ? colors.success + '60' : colors.border,
-            borderWidth: isThisPlanActive ? 2 : 1,
-            opacity: activeSubscription && !isThisPlanActive ? 0.65 : 1,
+            borderColor: isThisPlanActive 
+              ? colors.success 
+              : item.isPopular 
+              ? colors.gold 
+              : colors.border,
+            borderWidth: isThisPlanActive || item.isPopular ? 1.5 : 1,
+            opacity: activeSubscription && !isThisPlanActive ? 0.7 : 1,
           },
         ]}
       >
@@ -333,18 +337,18 @@ export default function SubscriptionsScreen() {
           <View>
             <Text style={[styles.planName, { color: colors.text }]}>{item.name}</Text>
             {item.isPopular && (
-              <View style={[styles.popularBadge, { backgroundColor: colors.primary }]}>
-                <Star size={10} color="#FFF" style={{ marginRight: 4 }} />
-                <Text style={styles.popularText}>{t('subscriptions.popular', language)}</Text>
+              <View style={[styles.popularBadge, { backgroundColor: colors.gold }]}>
+                <Crown size={11} color="#FFF" style={{ marginRight: 4 }} />
+                <Text style={styles.popularText}>{t('subscriptions.popular', language) || 'MOST POPULAR'}</Text>
               </View>
             )}
           </View>
-          <Zap size={24} color={item.isPopular ? colors.primary : colors.textMuted} />
+          <Zap size={24} color={item.isPopular ? colors.gold : colors.textMuted} />
         </View>
 
         <View style={styles.priceContainer}>
           <Text style={[styles.planPrice, { color: colors.text }]}>
-            <Text style={styles.currency}>$</Text>
+            <Text style={[styles.currency, { color: colors.gold }]}>$</Text>
             {item.price}
           </Text>
           <Text style={[styles.period, { color: colors.textSecondary }]}>
@@ -353,7 +357,7 @@ export default function SubscriptionsScreen() {
         </View>
 
         <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
-          {item.description || 'Access to premium books and exclusive content.'}
+          {item.description || 'Access to premium books, audiobooks, and exclusive content.'}
         </Text>
 
         <PlanButton item={item} />

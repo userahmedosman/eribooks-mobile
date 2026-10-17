@@ -2,37 +2,47 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getColors, spacing, borderRadius, typography } from '../../src/theme';
+import { getColors, spacing, borderRadius } from '../../src/theme';
 import { 
   Home, 
   Search, 
-  Star, 
+  Crown, 
   Newspaper,
   Settings as SettingsIcon 
 } from 'lucide-react-native';
 import { t } from '../../src/i18n';
 
-// Custom tab bar icon component
+// Custom modern tab bar icon component with active glow and pill
 function TabIcon({ icon: Icon, focused, color, label, themeColors }) {
   return (
     <View style={styles.iconContainer}>
       <View style={[
         styles.iconCircle, 
-        focused && { backgroundColor: themeColors.primary + '15' }
+        focused && { 
+          backgroundColor: themeColors.primaryTranslucent,
+        }
       ]}>
         <Icon 
-          size={22} 
-          color={color} 
-          strokeWidth={focused ? 2.5 : 2} 
+          size={21} 
+          color={focused ? themeColors.primary : themeColors.textSecondary} 
+          strokeWidth={focused ? 2.4 : 1.8} 
         />
       </View>
-      <Text style={[
-        styles.iconLabel, 
-        { color: focused ? themeColors.primary : themeColors.textSecondary }
-      ]}>
+      <Text 
+        numberOfLines={1}
+        style={[
+          styles.iconLabel, 
+          { 
+            color: focused ? themeColors.text : themeColors.textMuted,
+            fontWeight: focused ? '700' : '500'
+          }
+        ]}
+      >
         {label}
       </Text>
-      {focused && <View style={[styles.iconDot, { backgroundColor: themeColors.primary }]} />}
+      {focused && (
+        <View style={[styles.activeIndicator, { backgroundColor: themeColors.gold }]} />
+      )}
     </View>
   );
 }
@@ -43,7 +53,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   const bottomInset = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 8);
-  const tabBarHeight = 58 + bottomInset;
+  const tabBarHeight = 60 + bottomInset;
 
   return (
     <Tabs
@@ -57,8 +67,11 @@ export default function TabLayout() {
           height: tabBarHeight,
           paddingTop: 6,
           paddingBottom: bottomInset,
-          elevation: 0,
-          shadowOpacity: 0,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
@@ -97,7 +110,7 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ focused, color }) => (
             <TabIcon 
-              icon={Star} 
+              icon={Crown} 
               focused={focused} 
               color={color} 
               label={t('navigation.subscriptions', language)} 
@@ -106,7 +119,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="news"
         options={{
@@ -150,27 +162,27 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 64,
+    width: 68,
+    position: 'relative',
+    paddingTop: 2,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
   },
   iconLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
     letterSpacing: 0.2,
   },
-  iconDot: {
+  activeIndicator: {
     position: 'absolute',
-    bottom: -4,
-    width: 4,
-    height: 4,
+    top: 0,
+    width: 14,
+    height: 2.5,
     borderRadius: 2,
   },
 });
